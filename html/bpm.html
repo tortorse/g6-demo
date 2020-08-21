@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BPM</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    .toolbar {
+      width: 100%;
+      height: 48px;
+      line-height: 48px;
+      box-shadow: 0px 1px 4px rgba(0, 0, 0, .1);
+      position: relative;
+      z-index: 1;
+      display: flex;
+    }
+
+    .toolbar .tools {
+      margin: 0;
+      padding: 0 16px;
+      display: flex;
+    }
+
+    .toolbar .tools li {
+      margin-right: 8px;
+      list-style: none;
+      display: flex;
+      align-items: center;
+    }
+
+    .container {
+      display: flex;
+      position: relative;
+      z-index: 0;
+    }
+
+    .item-panel {
+      width: 160px;
+      background: #f0f2f5;
+      padding-top: 16px;
+    }
+
+    .item-panel ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .item-panel ul li {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 16px;
+      font-size: 14px;
+      color: rgba(0, 0, 0, .65);
+      user-select: none;
+    }
+
+    .item-panel ul li>img {
+      width: 52px;
+      height: 52px;
+      margin-bottom: 4px;
+      border-radius: 50%;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0);
+      transition: all 0.3s ease;
+    }
+
+    .item-panel ul li img:hover {
+      box-shadow: 0 2px 5px rgba(0, 0, 0, .1);
+      background: rgba(255, 255, 255, 1);
+      cursor: move;
+    }
+
+    .detail-panel {
+      width: 200px;
+      background: #f0f2f5;
+    }
+
+    #graph {
+      flex: 1;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="editor">
+    <div class="toolbar"></div>
+    <div class="container">
+      <div class="item-panel">
+        <ul>
+          <li class="item" data-type="start">
+            <img src="../assets/start.svg" />
+            <span>开始</span>
+          </li>
+          <li class="item" data-type="end">
+            <img src="../assets/end.svg" />
+            <span>结束</span>
+          </li>
+          <li class="item" data-type="approve">
+            <img src="../assets/approve.svg" />
+            <span>审批</span>
+          </li>
+          <li class="item" data-type="condition">
+            <img src="../assets/condition.svg" />
+            <span>条件</span>
+          </li>
+          <li class="item" data-type="notice">
+            <img src="../assets/notice.svg" />
+            <span>通知</span>
+          </li>
+        </ul>
+      </div>
+      <div id="graph"></div>
+      <div class="detail-panel"></div>
+    </div>
+  </div>
+  <script src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.6.1/dist/g6.min.js"></script>
+  <script>
+    const container = document.querySelector('.container')
+    const toolbarContainer = document.querySelector('.toolbar')
+    const items = document.querySelectorAll('.item-panel .item')
+    let addedCount = 0;
+    G6.registerBehavior('add-node', {
+      getEvents() {
+        // The event is canvas:click, the responsing function is onClick
+        return {
+          'canvas:mouseenter': 'onMouseEnter',
+          'node:mousemove': 'onMouseMove'
+        }
+      },
+      onMouseEnter(e) {
+        const self = this;
+        const graph = self.graph
+        graph.addItem('node', {
+          x: e.canvasX,
+          y: e.canvasY,
+          type: 'rect',
+          id: `node-${addedCount}`,
+          style: {
+            fill: '#FFFFFF',
+            fillOpacity: 1,
+            stroke: '#1890FF',
+            strokeOpacity: 1,
+            lineDash: [5, 5]
+          }
+        })
+        addedCount++;
+      },
+      onMouseMove(e) {
+        console.log(e)
+      }
+    })
+    const toolbar = new G6.ToolBar({
+      container: toolbarContainer,
+      className: 'tools'
+    })
+    const graph = new G6.Graph({
+      container: 'graph',
+      width: container.clientWidth - 360,
+      height: container.clientHeight,
+      defaultNode: {
+        type: 'image',
+        size: 36,
+        labelCfg: {
+          style: {
+            background: {
+              fill: '#ffffff',
+              padding: [2, 2, 2, 2],
+            }
+          }
+        },
+        anchorPoints: [
+          [0.5, 0],
+          [1, 0.5],
+          [0.5, 1],
+          [0, 0.5]
+        ]
+      },
+      defaultEdge: {
+        type: 'polyline',
+        color: '#000000',
+        style: {
+          endArrow: {
+            path: G6.Arrow.triangle(6, 8, 2),
+            d: 2,
+            fill: '#000000',
+            stroke: '#000000',
+          },
+          offset: 24
+        },
+        labelCfg: {
+          style: {
+            background: {
+              fill: '#ffffff',
+              padding: [2, 2, 2, 2],
+            }
+          }
+        }
+      },
+      modes: {
+        default: [
+          'drag-canvas',
+          'drag-node'
+        ],
+        addNode: ['add-node']
+      },
+      enabledStack: true,
+      maxStep: 30,
+      plugins: [toolbar]
+      // layout: {
+      //   type: 'dagre',
+      //   rankdir: 'LR',
+      //   ranksep: 30
+      // }
+    });
+    const data = {
+      nodes: [
+        {
+          id: 'start-node-0',
+          img: '../assets/start.svg',
+          label: '开始',
+          x: 32,
+          y: 32
+        },
+        {
+          id: 'approve-node-0',
+          img: '../assets/approve.svg',
+          label: 'IT审批',
+          x: 164,
+          y: 32
+        },
+        {
+          id: 'approve-node-1',
+          img: '../assets/approve.svg',
+          label: '直属主管审批',
+          x: 296,
+          y: 32
+        },
+        {
+          id: 'approve-node-2',
+          img: '../assets/approve.svg',
+          label: 'IT经理审批',
+          x: 428,
+          y: 32
+        },
+        {
+          id: 'condition-node-0',
+          img: '../assets/condition.svg',
+          label: '是否永久开通',
+          x: 560,
+          y: 32
+        },
+        {
+          id: 'approve-node-3',
+          img: '../assets/approve.svg',
+          label: '权限主管审批',
+          x: 692,
+          y: 32
+        },
+        {
+          id: 'notice-node-0',
+          img: '../assets/notice.svg',
+          label: '知会IT处理',
+          x: 692,
+          y: 194
+        },
+        {
+          id: 'end-node-0',
+          img: '../assets/end.svg',
+          label: '结束',
+          x: 824,
+          y: 194
+        }
+      ],
+      edges: [
+        {
+          source: 'start-node-0',
+          target: 'approve-node-0',
+          label: '提交'
+        },
+        {
+          source: 'approve-node-0',
+          target: 'approve-node-1',
+          label: '审批'
+        },
+        {
+          source: 'approve-node-1',
+          target: 'approve-node-2',
+          label: '审批'
+        },
+        {
+          source: 'approve-node-2',
+          target: 'condition-node-0',
+          label: '审批'
+        },
+        {
+          source: 'condition-node-0',
+          target: 'approve-node-3',
+          label: '是'
+        },
+        {
+          source: 'approve-node-3',
+          target: 'notice-node-0',
+          label: '审批',
+          sourceAnchor: 2,
+          targetAnchor: 0
+        },
+        {
+          source: 'condition-node-0',
+          target: 'notice-node-0',
+          label: '否',
+          sourceAnchor: 2,
+          targetAnchor: 3
+        },
+        {
+          source: 'notice-node-0',
+          target: 'end-node-0',
+        },
+      ]
+    }
+    // let data = {}
+    graph.data(data)
+    graph.render()
+    const undoDom = document.querySelector('.tools li[code="undo"]')
+    const undoDomIcon = document.querySelector('.tools li[code="undo"] svg')
+    const redoDom = document.querySelector('.tools li[code="redo"]')
+    const redoDomIcon = document.querySelector('.tools li[code="redo"] svg')
+    graph.on('stackchange', (e) => {
+      const { undoStack, redoStack } = e
+      const undoStackLen = undoStack.length
+      const redoStackLen = redoStack.length
+      // undo 不可用
+      if (undoStackLen === 1) {
+        undoDom.setAttribute('style', 'cursor: not-allowed')
+        undoDomIcon.setAttribute('style', 'opacity: 0.4')
+      } else {
+        undoDom.removeAttribute('style')
+        undoDomIcon.removeAttribute('style')
+      }
+
+      // redo 不可用
+      if (redoStackLen === 0) {
+        redoDom.setAttribute('style', 'cursor: not-allowed');
+        redoDomIcon.setAttribute('style', 'opacity: 0.4');
+      } else {
+        redoDom.removeAttribute('style');
+        redoDomIcon.removeAttribute('style');
+      }
+    })
+  </script>
+</body>
+
+</html>

@@ -10,10 +10,16 @@
     body {
       margin: 0;
       padding: 0;
+      height: 100%;
     }
 
     * {
       box-sizing: border-box;
+    }
+
+    .editor,
+    .container {
+      height: 100%;
     }
 
     .toolbar {
@@ -131,6 +137,35 @@
     const container = document.querySelector('.container')
     const toolbarContainer = document.querySelector('.toolbar')
     const items = document.querySelectorAll('.item-panel .item')
+    const itemTypes = {
+      start: {
+        img: '../assets/start.svg',
+        label: '开始'
+      },
+      end: {
+        img: '../assets/end.svg',
+        label: '结束'
+      },
+      approve: {
+        img: '../assets/approve.svg',
+        label: '审批'
+      },
+      condition: {
+        img: '../assets/condition.svg',
+        label: '条件'
+      },
+      notice: {
+        img: '../assets/notice.svg',
+        label: '通知'
+      }
+    }
+    let currentItemType
+    items.forEach(item => {
+      item.addEventListener('dragstart', () => {
+        graph.setMode('addNode')
+        currentItemType = item.dataset.type
+      })
+    });
     let addedCount = 0;
     G6.registerBehavior('add-node', {
       getEvents() {
@@ -146,20 +181,13 @@
         graph.addItem('node', {
           x: e.canvasX,
           y: e.canvasY,
-          type: 'rect',
+          type: 'image',
           id: `node-${addedCount}`,
-          style: {
-            fill: '#FFFFFF',
-            fillOpacity: 1,
-            stroke: '#1890FF',
-            strokeOpacity: 1,
-            lineDash: [5, 5]
-          }
+          img: itemTypes[currentItemType].img,
+          label: itemTypes[currentItemType].label
         })
         addedCount++;
-      },
-      onMouseMove(e) {
-        console.log(e)
+        graph.setMode('default')
       }
     })
     const toolbar = new G6.ToolBar({
@@ -186,7 +214,7 @@
           [1, 0.5],
           [0.5, 1],
           [0, 0.5]
-        ]
+        ],
       },
       defaultEdge: {
         type: 'polyline',
@@ -211,8 +239,14 @@
       },
       modes: {
         default: [
-          'drag-canvas',
-          'drag-node'
+          // 'drag-canvas',
+          {
+            type: 'drag-node',
+            enableDelegate: true
+          },
+          {
+            type: 'click-select'
+          }
         ],
         addNode: ['add-node']
       },
@@ -357,6 +391,20 @@
       } else {
         redoDom.removeAttribute('style');
         redoDomIcon.removeAttribute('style');
+      }
+    })
+    graph.on('nodeselectchange', (e) => {
+      console.log(e)
+      if (e.select) {
+        graph.updateItem(e.target, {
+          linkPoints: {
+            top: true,
+            size: 10,
+            lineWidth: 1,
+            fill: '#fff',
+            stroke: '#1890FF'
+          }
+        })
       }
     })
   </script>

@@ -107,23 +107,23 @@
       <div class="item-panel">
         <ul>
           <li class="item" data-type="start">
-            <img src="../assets/start.svg" />
+            <img src="../assets/bpm/start.svg" />
             <span>开始</span>
           </li>
           <li class="item" data-type="end">
-            <img src="../assets/end.svg" />
+            <img src="../assets/bpm/end.svg" />
             <span>结束</span>
           </li>
           <li class="item" data-type="approve">
-            <img src="../assets/approve.svg" />
+            <img src="../assets/bpm/approve.svg" />
             <span>审批</span>
           </li>
           <li class="item" data-type="condition">
-            <img src="../assets/condition.svg" />
+            <img src="../assets/bpm/condition.svg" />
             <span>条件</span>
           </li>
           <li class="item" data-type="notice">
-            <img src="../assets/notice.svg" />
+            <img src="../assets/bpm/notice.svg" />
             <span>通知</span>
           </li>
         </ul>
@@ -139,23 +139,23 @@
     const items = document.querySelectorAll('.item-panel .item')
     const itemTypes = {
       start: {
-        img: '../assets/start.svg',
+        img: '../assets/bpm/start.svg',
         label: '开始'
       },
       end: {
-        img: '../assets/end.svg',
+        img: '../assets/bpm/end.svg',
         label: '结束'
       },
       approve: {
-        img: '../assets/approve.svg',
+        img: '../assets/bpm/approve.svg',
         label: '审批'
       },
       condition: {
-        img: '../assets/condition.svg',
+        img: '../assets/bpm/condition.svg',
         label: '条件'
       },
       notice: {
-        img: '../assets/notice.svg',
+        img: '../assets/bpm/notice.svg',
         label: '通知'
       }
     }
@@ -176,7 +176,7 @@
         }
       },
       onMouseEnter(e) {
-        const self = this;
+        const self = this
         const graph = self.graph
         graph.addItem('node', {
           x: e.canvasX,
@@ -263,56 +263,56 @@
       nodes: [
         {
           id: 'start-node-0',
-          img: '../assets/start.svg',
+          img: '../assets/bpm/start.svg',
           label: '开始',
           x: 32,
           y: 32
         },
         {
           id: 'approve-node-0',
-          img: '../assets/approve.svg',
+          img: '../assets/bpm/approve.svg',
           label: 'IT审批',
           x: 164,
           y: 32
         },
         {
           id: 'approve-node-1',
-          img: '../assets/approve.svg',
+          img: '../assets/bpm/approve.svg',
           label: '直属主管审批',
           x: 296,
           y: 32
         },
         {
           id: 'approve-node-2',
-          img: '../assets/approve.svg',
+          img: '../assets/bpm/approve.svg',
           label: 'IT经理审批',
           x: 428,
           y: 32
         },
         {
           id: 'condition-node-0',
-          img: '../assets/condition.svg',
+          img: '../assets/bpm/condition.svg',
           label: '是否永久开通',
           x: 560,
           y: 32
         },
         {
           id: 'approve-node-3',
-          img: '../assets/approve.svg',
+          img: '../assets/bpm/approve.svg',
           label: '权限主管审批',
           x: 692,
           y: 32
         },
         {
           id: 'notice-node-0',
-          img: '../assets/notice.svg',
+          img: '../assets/bpm/notice.svg',
           label: '知会IT处理',
           x: 692,
           y: 194
         },
         {
           id: 'end-node-0',
-          img: '../assets/end.svg',
+          img: '../assets/bpm/end.svg',
           label: '结束',
           x: 824,
           y: 194

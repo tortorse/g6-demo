@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flow Editor</title>
+  <style>
+    html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #F0F2F5;
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      font-size: 14px;
+    }
+
+    .editor {
+      margin: 24px;
+      background: #fff;
+      height: calc(100% - 48px);
+    }
+
+    .toolbar {
+      height: 44px;
+      background: #FAFAFA;
+      box-shadow: 0 -1px 0 inset rgba(0, 0, 0, 0.08);
+      ;
+    }
+
+    .container {
+      display: flex;
+      height: calc(100% - 44px);
+    }
+
+    .item-panel {
+      width: 240px;
+      box-shadow: -1px 0 0 inset rgba(0, 0, 0, 0.08);
+      padding: 24px;
+    }
+
+    .items {
+      margin: 0;
+      padding: 0;
+    }
+
+    .items li.item {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 24px;
+      cursor: pointer;
+    }
+
+    .items li.item:last-child {
+      margin-bottom: 0;
+    }
+
+    .detail-panel {
+      width: 240px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      padding: 10px 16px;
+      background: #FAFAFA;
+      box-shadow: 0 -1px 0 inset rgba(0, 0, 0, 0.08);
+    }
+
+    .property {
+      flex: 1
+    }
+
+    .canvas {
+      flex: 1;
+      box-shadow: -1px 0 0 inset rgba(0, 0, 0, 0.08);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="editor">
+    <div class="toolbar">
+
+    </div>
+    <div class="container">
+      <div class="item-panel">
+        <ul class="items">
+          <li class="item" data-type="start" data-width="72" data-height="72" data-label="Start">
+            <img src="../assets/flow/start.svg" alt="Start">
+          </li>
+          <li class="item" data-type="process" data-width="84" data-height="46" data-label="Process">
+            <img src="../assets/flow/process.svg" alt="Process">
+          </li>
+          <li class="item" data-type="decision" data-width="82" data-height="74" data-label="Decision">
+            <img src="../assets/flow/decision.svg" alt="Decision">
+          </li>
+          <li class="item" data-type="io" data-width="80" data-height="40" data-label="IO">
+            <img src="../assets/flow/io.svg" alt="IO">
+          </li>
+          <li class="item" data-type="terminal" data-width="80" data-height="48" data-label="Terminal">
+            <img src="../assets/flow/terminal.svg" alt="Terminal">
+          </li>
+        </ul>
+      </div>
+      <div class="canvas" id="canvas"></div>
+      <div class="detail-panel">
+        <div class="panel-header">Canvas</div>
+        <div class="property"></div>
+        <div class="panel-header">Minimap</div>
+        <div class="minimap"></div>
+      </div>
+    </div>
+  </div>
+  <script src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.6.1/dist/g6.min.js"></script>
+  <script>
+    const container = document.querySelector('.container')
+    const items = document.querySelectorAll('.items .item')
+    const img = new Image()
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+
+    items.forEach(item => {
+      const { type, width, height, label } = item.dataset
+      const addModel = {
+        type,
+        width,
+        height,
+        label
+      }
+      item.addEventListener('dragstart', e => {
+        e.dataTransfer.setDragImage(img, 0, 0)
+        graph.set('addNodeDragging', true)
+        graph.set('addModel', addModel);
+      })
+      item.addEventListener('drag', e => {
+        graph.emit('canvas:mousemove', e);
+      })
+      item.addEventListener('dragend', e => {
+        graph.emit('canvas:mouseup', e);
+        graph.set('addNodeDragging', false);
+        graph.set('addModel', null);
+      })
+    })
+    const nodeStyle = {
+      shadowOffsetX: 0,
+      shadowOffsetY: 4,
+      shadowBlur: 10,
+      shadowColor: 'rgba(13, 26, 38, 0.1)',
+      lineWidth: 1
+    }
+    const minimapContainer = document.querySelector('.minimap')
+    const minimap = new G6.Minimap({
+      size: [240, 200],
+      container: minimapContainer
+    })
+    G6.registerNode('start', {
+      drawAnchor(group) {
+        const bbox = group.get('children')[0].getBBox()
+        this.getAnchorPoints().forEach((point, index) => {
+          const anchorContainer = group.addGroup()
+          anchorContainer.addShape('circle', {
+            attrs: {
+              stroke: '#1890FF',
+              fill: '#fff',
+              x: bbox.minX + bbox.width * point[0],
+              y: bbox.minY + bbox.height * point[1],
+              r: 3.5,
+              lineAppendWidth: 12,
+              cursor: 'crosshair'
+            }
+          })
+          group.anchorShapes.push(anchorContainer)
+        })
+      },
+      initAnchor(group) {
+        group.anchorShapes = []
+        group.showAnchor = () => {
+          this.drawAnchor(group);
+        }
+        group.clearAnchor = () => {
+          console.log('clear')
+        }
+      },
+      drawShape(cfg, group) {
+        const { width, height, x, y, label, id } = cfg
+        const shape = group.addShape('circle', {
+          attrs: {
+            id,
+            width,
+            height,
+            r: width / 2,
+            stroke: '#FFC069',
+            fill: '#FFF2E8',
+            ...nodeStyle
+          },
+          name: 'startShape'
+        })
+        this.initAnchor(group)
+        return shape
+      },
+      setState(name, value, node) {
+        const group = node.getContainer()
+        if (name === 'show-anchor') {
+          value ? group.showAnchor() : clearAnchor()
+        }
+        if (name === 'selected') {
+          const shape = group.getChildByIndex(0)
+          value
+            ? shape.attr(
+              {
+                fill: '#fdd492',
+                stroke: '#fba746',
+              }
+            )
+            : shape.attr(
+              {
+                fill: '#FFF2E8',
+                stroke: '#FFC069',
+              }
+            )
+        }
+      },
+      getAnchorPoints() {
+        return [
+          [0.5, 0], // top
+          [1, 0.5], // right
+          [0.5, 1], // bottom
+          [0, 0.5], // left
+        ]
+      },
+    }, 'single-node')
+    G6.registerNode('process', {
+      drawAnchor(group) {
+        const bbox = group.get('children')[0].getBBox()
+        this.getAnchorPoints().forEach((point, index) => {
+          const anchorContainer = group.addGroup()
+          anchorContainer.addShape('circle', {
+            attrs: {
+              stroke: '#1890FF',
+              fill: '#fff',
+              x: bbox.minX + bbox.width * point[0],
+              y: bbox.minY + bbox.height * point[1],
+              r: 3.5,
+              lineAppendWidth: 12,
+              cursor: 'crosshair'
+            }
+          })
+          group.anchorShapes.push(anchorContainer)
+        })
+      },
+      initAnchor(group) {
+        group.anchorShapes = []
+        group.showAnchor = () => {
+          this.drawAnchor(group);
+        }
+        group.clearAnchor = () => {
+          console.log('clear')
+        }
+      },
+      drawShape(cfg, group) {
+        const { width, height, label, id } = cfg
+        const shape = group.addShape('rect', {
+          attrs: {
+            id,
+            width: parseInt(width),
+            height: parseInt(height),
+            x: - width / 2,
+            y: - height / 2,
+            stroke: '#1890FF',
+            fill: '#E6F7FF',
+            radius: 4,
+            ...nodeStyle
+          },
+          name: 'processShape'
+        })
+        this.initAnchor(group)
+        return shape
+      },
+      setState(name, value, node) {
+        const group = node.getContainer()
+        if (name === 'show-anchor') {
+          value ? group.showAnchor() : clearAnchor()
+        }
+        if (name === 'selected') {
+          const shape = group.getChildByIndex(0)
+          value
+            ? shape.attr(
+              {
+                fill: '#92d4fd',
+                stroke: '#55b2fe',
+              }
+            )
+            : shape.attr(
+              {
+                fill: '#E6F7FF',
+                stroke: '#1890FF',
+              }
+            )
+        }
+      },
+      getAnchorPoints() {
+        return [
+          [0.5, 0], // top
+          [1, 0.5], // right
+          [0.5, 1], // bottom
+          [0, 0.5], // left
+        ]
+      },
+    }, 'single-node')
+    G6.registerNode('decision', {
+      drawAnchor(group) {
+        const bbox = group.get('children')[0].getBBox()
+        this.getAnchorPoints().forEach((point, index) => {
+          const anchorContainer = group.addGroup()
+          anchorContainer.addShape('circle', {
+            attrs: {
+              stroke: '#1890FF',
+              fill: '#fff',
+              x: bbox.minX + bbox.width * point[0],
+              y: bbox.minY + bbox.height * point[1],
+              r: 3.5,
+              lineAppendWidth: 12,
+              cursor: 'crosshair'
+            }
+          })
+          group.anchorShapes.push(anchorContainer)
+        })
+      },
+      initAnchor(group) {
+        group.anchorShapes = []
+        group.showAnchor = () => {
+          this.drawAnchor(group);
+        }
+        group.clearAnchor = () => {
+          console.log('clear')
+        }
+      },
+      drawShape(cfg, group) {
+        const { width, height, label, id } = cfg
+        const shape = group.addShape('polygon', {
+          attrs: {
+            id,
+            width: parseInt(width),
+            height: parseInt(height),
+            points: [
+              [0, - height / 2],
+              [width / 2, 0],
+              [0, height / 2],
+              [-width / 2, 0]
+            ],
+            stroke: '#5CDBD3',
+            fill: '#E6FFFB',
+            ...nodeStyle
+          },
+          name: 'decisionShape'
+        })
+        this.initAnchor(group)
+        return shape
+      },
+      setState(name, value, node) {
+        const group = node.getContainer()
+        if (name === 'show-anchor') {
+          value ? group.showAnchor() : clearAnchor()
+        }
+        if (name === 'selected') {
+          const shape = group.getChildByIndex(0)
+          value
+            ? shape.attr(
+              {
+                fill: '#89e6dd',
+                stroke: '#58d7d1',
+              }
+            )
+            : shape.attr(
+              {
+                fill: '#E6FFFB',
+                stroke: '#5CDBD3',
+              }
+            )
+        }
+      },
+      getAnchorPoints() {
+        return [
+          [0.5, 0], // top
+          [1, 0.5], // right
+          [0.5, 1], // bottom
+          [0, 0.5], // left
+        ]
+      }
+    }, 'single-node')
+    G6.registerNode('io', {
+      drawAnchor(group) {
+        const bbox = group.get('children')[0].getBBox()
+        this.getAnchorPoints().forEach((point, index) => {
+          const anchorContainer = group.addGroup()
+          anchorContainer.addShape('circle', {
+            attrs: {
+              stroke: '#1890FF',
+              fill: '#fff',
+              x: bbox.minX + bbox.width * point[0],
+              y: bbox.minY + bbox.height * point[1],
+              r: 3.5,
+              lineAppendWidth: 12,
+              cursor: 'crosshair'
+            }
+          })
+          group.anchorShapes.push(anchorContainer)
+        })
+      },
+      initAnchor(group) {
+        group.anchorShapes = []
+        group.showAnchor = () => {
+          this.drawAnchor(group);
+        }
+        group.clearAnchor = () => {
+          console.log('clear')
+        }
+      },
+      drawShape(cfg, group) {
+        const { width, height, label, id } = cfg
+        const shape = group.addShape('polygon', {
+          attrs: {
+            id,
+            width: parseInt(width),
+            height: parseInt(height),
+            points: [
+              [width / 4 - width / 2, - height / 2],
+              [width - width / 2, - height / 2],
+              [width - width / 4 - width / 2, height - height / 2],
+              [- width / 2, height - height / 2]
+            ],
+            stroke: '#B4CC72',
+            fill: '#F8FFE5',
+            ...nodeStyle
+          },
+          name: 'ioShape'
+        })
+        this.initAnchor(group)
+        return shape
+      },
+      setState(name, value, node) {
+        const group = node.getContainer()
+        if (name === 'show-anchor') {
+          value ? group.showAnchor() : clearAnchor()
+        }
+        if (name === 'selected') {
+          const shape = group.getChildByIndex(0)
+          value
+            ? shape.attr(
+              {
+                fill: '#c8e08a',
+                stroke: '#b5d45f',
+              }
+            )
+            : shape.attr(
+              {
+                fill: '#F8FFE5',
+                stroke: '#B4CC72',
+              }
+            )
+        }
+      },
+      getAnchorPoints() {
+        return [
+          [0.5, 0], // top
+          [1, 0.5], // right
+          [0.5, 1], // bottom
+          [0, 0.5], // left
+        ]
+      },
+    }, 'single-node')
+    G6.registerNode('terminal', {
+      drawAnchor(group) {
+        const bbox = group.get('children')[0].getBBox()
+        this.getAnchorPoints().forEach((point, index) => {
+          const anchorContainer = group.addGroup()
+          anchorContainer.addShape('circle', {
+            attrs: {
+              stroke: '#1890FF',
+              fill: '#fff',
+              x: bbox.minX + bbox.width * point[0],
+              y: bbox.minY + bbox.height * point[1],
+              r: 3.5,
+              lineAppendWidth: 12,
+              cursor: 'crosshair'
+            }
+          })
+          group.anchorShapes.push(anchorContainer)
+        })
+      },
+      initAnchor(group) {
+        group.anchorShapes = []
+        group.showAnchor = () => {
+          this.drawAnchor(group);
+        }
+        group.clearAnchor = () => {
+          console.log('clear')
+        }
+      },
+      drawShape(cfg, group) {
+        const { width, height, label, id } = cfg
+        const shape = group.addShape('rect', {
+          attrs: {
+            id,
+            width: parseInt(width),
+            height: parseInt(height),
+            x: - width / 2,
+            y: - height / 2,
+            stroke: '#B37FEB',
+            fill: '#F9F0FF',
+            radius: 24,
+            ...nodeStyle
+          },
+          name: 'terminalShape'
+        })
+        this.initAnchor(group)
+        return shape
+      },
+      setState(name, value, node) {
+        const group = node.getContainer()
+        if (name === 'show-anchor') {
+          value ? group.showAnchor() : clearAnchor()
+        }
+        if (name === 'selected') {
+          const shape = group.getChildByIndex(0)
+          value
+            ? shape.attr(
+              {
+                fill: '#d3aff5',
+                stroke: '#a26ee3'
+              }
+            )
+            : shape.attr(
+              {
+                fill: '#F9F0FF',
+                stroke: '#B37FEB',
+              }
+            )
+        }
+      },
+      getAnchorPoints() {
+        return [
+          [0.5, 0], // top
+          [1, 0.5], // right
+          [0.5, 1], // bottom
+          [0, 0.5], // left
+        ]
+      },
+    }, 'single-node')
+    G6.registerBehavior('dragCanvasCursor', {
+      getEvents() {
+        return {
+          'canvas:dragstart': 'onDragStart',
+          'canvas:dragend': 'onDragEnd',
+          'canvas:mouseenter': 'onMouseEnter'
+        }
+      },
+      onMouseEnter() {
+        const self = this
+        const graph = self.graph
+        // 进入画布时，鼠标指针变为抓手
+        graph.get('canvas').get('el').style.cursor = 'grab'
+      },
+      onDragStart() {
+        const self = this
+        const graph = self.graph
+        // 拖拽画布时，鼠标指针变为拳头
+        graph.get('canvas').get('el').style.cursor = 'grabbing'
+      },
+      onDragEnd() {
+        const self = this
+        const graph = self.graph
+        // 鼠标释放时，还原鼠标指针
+        graph.get('canvas').get('el').style.cursor = 'grab'
+      }
+    })
+    G6.registerBehavior('dragPanelItemAddNode', {
+      getDefaultCfg() {
+        return {}
+      },
+      getEvents() {
+        return {
+          'canvas:mousemove': 'onMouseMove',
+          'canvas:mouseup': 'onMouseUp',
+          'canvas:mouseleave': 'onMouseLeave'
+        }
+      },
+      onMouseMove(e) {
+        const self = this
+        const graph = self.graph
+        if (graph.get('addNodeDragging')) {
+          let delegateShape = graph.get('addDelegateShape')
+          const addModel = graph.get('addModel')
+          const { width, height } = addModel
+          const point = graph.getPointByClient(e.x, e.y)
+          const { x, y } = point
+          if (!delegateShape) {
+            const parent = graph.get('group')
+            delegateShape = parent.addShape('rect', {
+              attrs: {
+                width: parseInt(width),
+                height: parseInt(height),
+                x: x - width / 2,
+                y: y - height / 2,
+                stroke: '#1890FF',
+                fill: '#1890FF',
+                fillOpacity: .08,
+                lineDash: [4, 4],
+                radius: 4,
+                lineWidth: 1
+              },
+              name: 'delegateShape'
+            })
+            delegateShape.set('capture', false)
+            graph.set('addDelegateShape', delegateShape)
+          }
+          delegateShape.attr({ x: x - width / 2, y: y - height / 2 })
+          graph.paint()
+          this.graph.emit('afternodedrag', delegateShape)
+        }
+      },
+      onMouseUp(e) {
+        const self = this
+        const graph = self.graph
+        if (graph.get('addNodeDragging')) {
+          const point = graph.getPointByClient(e.clientX, e.clientY)
+          if (point.x > 0 && point.y > 0) {
+            self._addNode(point)
+          }
+        }
+      },
+      onMouseLeave() {
+        const self = this
+        const graph = self.graph
+        if (graph.get('addNodeDragging')) {
+          this._clearDelegate()
+          graph.emit('afternodedragend')
+        }
+      },
+      _addNode(point) {
+        const self = this
+        const graph = self.graph
+        if (graph.get('addNodeDragging')) {
+          const addModel = graph.get('addModel')
+          const { type } = addModel
+          const timestamp = new Date().getTime()
+          const id = `${type}-${timestamp}`
+          const { x, y } = point
+          graph.addItem('node', {
+            ...addModel,
+            x,
+            y,
+            id
+          })
+          this._clearDelegate()
+          graph.setItemState(id, 'show-anchor', true)
+          graph.setItemState(id, 'selected', true)
+        }
+      },
+      _clearDelegate() {
+        const self = this
+        const graph = self.graph
+        const delegateShape = graph.get('addDelegateShape')
+        if (delegateShape) {
+          delegateShape.remove()
+          graph.set('addDelegateShape', null)
+          graph.paint()
+        }
+        graph.emit('afternodedragend')
+      }
+    })
+    const graph = new G6.Graph({
+      container: 'canvas',
+      width: container.clientWidth - 480,
+      height: container.clientHeight,
+      modes: {
+        default: [
+          {
+            type: 'drag-canvas'
+          }
+        ],
+        edit: [
+          'drag-canvas',
+          'dragPanelItemAddNode',
+          'dragCanvasCursor'
+        ]
+      },
+      plugins: [minimap]
+    })
+
+    graph.setMode('edit')
+    graph.render()
+  </script>
+</body>
+
+</html>

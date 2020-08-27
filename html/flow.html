@@ -167,9 +167,9 @@
     G6.registerNode('start', {
       drawAnchor(group) {
         const bbox = group.get('children')[0].getBBox()
+        const anchorGroup = group.addGroup()
         this.getAnchorPoints().forEach((point, index) => {
-          const anchorContainer = group.addGroup()
-          anchorContainer.addShape('circle', {
+          anchorGroup.addShape('circle', {
             attrs: {
               stroke: '#1890FF',
               fill: '#fff',
@@ -177,14 +177,14 @@
               y: bbox.minY + bbox.height * point[1],
               r: 3.5,
               lineAppendWidth: 12,
-              cursor: 'crosshair'
-            }
+              cursor: 'crosshair',
+            },
+            index,
+            name: 'anchor'
           })
-          group.anchorShapes.push(anchorContainer)
         })
       },
       initAnchor(group) {
-        group.anchorShapes = []
         group.showAnchor = () => {
           this.drawAnchor(group);
         }
@@ -215,7 +215,7 @@
           value ? group.showAnchor() : clearAnchor()
         }
         if (name === 'selected') {
-          const shape = group.getChildByIndex(0)
+          const shape = group.getFirst()
           value
             ? shape.attr(
               {
@@ -230,6 +230,21 @@
               }
             )
         }
+        if (name === 'anchor-hover') {
+          const index = value
+          const anchor = group.getLast().getChildByIndex(index)
+          anchor.attr({
+            fill: '#1890FF'
+          })
+        }
+        if (name === 'anchor-leave') {
+          const anchor = group.getLast().find(item => {
+            return item.attr('fill') === '#1890FF'
+          })
+          if (value && anchor) {
+            anchor.attr({ fill: '#fff' })
+          }
+        }
       },
       getAnchorPoints() {
         return [
@@ -243,9 +258,9 @@
     G6.registerNode('process', {
       drawAnchor(group) {
         const bbox = group.get('children')[0].getBBox()
+        const anchorGroup = group.addGroup()
         this.getAnchorPoints().forEach((point, index) => {
-          const anchorContainer = group.addGroup()
-          anchorContainer.addShape('circle', {
+          anchorGroup.addShape('circle', {
             attrs: {
               stroke: '#1890FF',
               fill: '#fff',
@@ -254,9 +269,10 @@
               r: 3.5,
               lineAppendWidth: 12,
               cursor: 'crosshair'
-            }
+            },
+            index,
+            name: 'anchor'
           })
-          group.anchorShapes.push(anchorContainer)
         })
       },
       initAnchor(group) {
@@ -308,6 +324,21 @@
               }
             )
         }
+        if (name === 'anchor-hover') {
+          const index = value
+          const anchor = group.getLast().getChildByIndex(index)
+          anchor.attr({
+            fill: '#1890FF'
+          })
+        }
+        if (name === 'anchor-leave') {
+          const anchor = group.getLast().find(item => {
+            return item.attr('fill') === '#1890FF'
+          })
+          if (value && anchor) {
+            anchor.attr({ fill: '#fff' })
+          }
+        }
       },
       getAnchorPoints() {
         return [
@@ -321,9 +352,9 @@
     G6.registerNode('decision', {
       drawAnchor(group) {
         const bbox = group.get('children')[0].getBBox()
+        const anchorGroup = group.addGroup()
         this.getAnchorPoints().forEach((point, index) => {
-          const anchorContainer = group.addGroup()
-          anchorContainer.addShape('circle', {
+          anchorGroup.addShape('circle', {
             attrs: {
               stroke: '#1890FF',
               fill: '#fff',
@@ -332,9 +363,10 @@
               r: 3.5,
               lineAppendWidth: 12,
               cursor: 'crosshair'
-            }
+            },
+            index,
+            name: 'anchor'
           })
-          group.anchorShapes.push(anchorContainer)
         })
       },
       initAnchor(group) {
@@ -389,6 +421,21 @@
               }
             )
         }
+        if (name === 'anchor-hover') {
+          const index = value
+          const anchor = group.getLast().getChildByIndex(index)
+          anchor.attr({
+            fill: '#1890FF'
+          })
+        }
+        if (name === 'anchor-leave') {
+          const anchor = group.getLast().find(item => {
+            return item.attr('fill') === '#1890FF'
+          })
+          if (value && anchor) {
+            anchor.attr({ fill: '#fff' })
+          }
+        }
       },
       getAnchorPoints() {
         return [
@@ -402,9 +449,9 @@
     G6.registerNode('io', {
       drawAnchor(group) {
         const bbox = group.get('children')[0].getBBox()
+        const anchorGroup = group.addGroup()
         this.getAnchorPoints().forEach((point, index) => {
-          const anchorContainer = group.addGroup()
-          anchorContainer.addShape('circle', {
+          anchorGroup.addShape('circle', {
             attrs: {
               stroke: '#1890FF',
               fill: '#fff',
@@ -413,9 +460,10 @@
               r: 3.5,
               lineAppendWidth: 12,
               cursor: 'crosshair'
-            }
+            },
+            index,
+            name: 'anchor'
           })
-          group.anchorShapes.push(anchorContainer)
         })
       },
       initAnchor(group) {
@@ -470,6 +518,21 @@
               }
             )
         }
+        if (name === 'anchor-hover') {
+          const index = value
+          const anchor = group.getLast().getChildByIndex(index)
+          anchor.attr({
+            fill: '#1890FF'
+          })
+        }
+        if (name === 'anchor-leave') {
+          const anchor = group.getLast().find(item => {
+            return item.attr('fill') === '#1890FF'
+          })
+          if (value && anchor) {
+            anchor.attr({ fill: '#fff' })
+          }
+        }
       },
       getAnchorPoints() {
         return [
@@ -483,9 +546,9 @@
     G6.registerNode('terminal', {
       drawAnchor(group) {
         const bbox = group.get('children')[0].getBBox()
+        const anchorGroup = group.addGroup()
         this.getAnchorPoints().forEach((point, index) => {
-          const anchorContainer = group.addGroup()
-          anchorContainer.addShape('circle', {
+          anchorGroup.addShape('circle', {
             attrs: {
               stroke: '#1890FF',
               fill: '#fff',
@@ -494,9 +557,10 @@
               r: 3.5,
               lineAppendWidth: 12,
               cursor: 'crosshair'
-            }
+            },
+            index,
+            name: 'anchor'
           })
-          group.anchorShapes.push(anchorContainer)
         })
       },
       initAnchor(group) {
@@ -548,6 +612,21 @@
               }
             )
         }
+        if (name === 'anchor-hover') {
+          const index = value
+          const anchor = group.getLast().getChildByIndex(index)
+          anchor.attr({
+            fill: '#1890FF'
+          })
+        }
+        if (name === 'anchor-leave') {
+          const anchor = group.getLast().find(item => {
+            return item.attr('fill') === '#1890FF'
+          })
+          if (value && anchor) {
+            anchor.attr({ fill: '#fff' })
+          }
+        }
       },
       getAnchorPoints() {
         return [
@@ -558,6 +637,31 @@
         ]
       },
     }, 'single-node')
+    G6.registerBehavior('hoverAnchorActived', {
+      getEvents() {
+        return {
+          'node:mouseover': 'onMouseOver',
+          'node:mouseout': 'onMouseOut'
+        }
+      },
+      onMouseOver(e) {
+        const self = this
+        const graph = self.graph
+        const { item } = e
+
+        if (e.target.get('name') === 'anchor') {
+          const index = e.target.get('index')
+          graph.setItemState(item, 'anchor-hover', index)
+          graph.setItemState(item, 'anchor-leave', false)
+        }
+      },
+      onMouseOut(e) {
+        const self = this
+        const graph = self.graph
+        const { item } = e
+        graph.setItemState(item, 'anchor-leave', true)
+      }
+    })
     G6.registerBehavior('dragCanvasCursor', {
       getEvents() {
         return {
@@ -635,9 +739,7 @@
         const graph = self.graph
         if (graph.get('addNodeDragging')) {
           const point = graph.getPointByClient(e.clientX, e.clientY)
-          if (point.x > 0 && point.y > 0) {
-            self._addNode(point)
-          }
+          self._addNode(point)
         }
       },
       onMouseLeave() {
@@ -693,7 +795,8 @@
         edit: [
           'drag-canvas',
           'dragPanelItemAddNode',
-          'dragCanvasCursor'
+          'dragCanvasCursor',
+          'hoverAnchorActived'
         ]
       },
       plugins: [minimap]

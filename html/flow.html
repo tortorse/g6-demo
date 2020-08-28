@@ -165,33 +165,6 @@
       container: minimapContainer
     })
     G6.registerNode('start', {
-      drawAnchor(group) {
-        const bbox = group.get('children')[0].getBBox()
-        const anchorGroup = group.addGroup()
-        this.getAnchorPoints().forEach((point, index) => {
-          anchorGroup.addShape('circle', {
-            attrs: {
-              stroke: '#1890FF',
-              fill: '#fff',
-              x: bbox.minX + bbox.width * point[0],
-              y: bbox.minY + bbox.height * point[1],
-              r: 3.5,
-              lineAppendWidth: 12,
-              cursor: 'crosshair',
-            },
-            index,
-            name: 'anchor'
-          })
-        })
-      },
-      initAnchor(group) {
-        group.showAnchor = () => {
-          this.drawAnchor(group);
-        }
-        group.clearAnchor = () => {
-          console.log('clear')
-        }
-      },
       drawShape(cfg, group) {
         const { width, height, x, y, label, id } = cfg
         const shape = group.addShape('circle', {
@@ -204,15 +177,38 @@
             fill: '#FFF2E8',
             ...nodeStyle
           },
-          name: 'startShape'
+          name: 'startNodeShape'
         })
-        this.initAnchor(group)
         return shape
       },
       setState(name, value, node) {
         const group = node.getContainer()
         if (name === 'show-anchor') {
-          value ? group.showAnchor() : clearAnchor()
+          if (value) {
+            const bbox = group.get('children')[0].getBBox()
+            const anchorGroup = group.addGroup()
+            this.getAnchorPoints().forEach((point, index) => {
+              anchorGroup.addShape('circle', {
+                attrs: {
+                  stroke: '#1890FF',
+                  fill: '#fff',
+                  x: bbox.minX + bbox.width * point[0],
+                  y: bbox.minY + bbox.height * point[1],
+                  r: 3.5,
+                  lineAppendWidth: 12,
+                  cursor: 'crosshair',
+                  opacity: 1
+                },
+                index,
+                name: 'anchor'
+              })
+            })
+          } else {
+            const anchors = group.getLast().findAll(item => item)
+            anchors.forEach(anchor => {
+              anchor.attr({ opacity: 0 })
+            })
+          }
         }
         if (name === 'selected') {
           const shape = group.getFirst()
@@ -231,18 +227,25 @@
             )
         }
         if (name === 'anchor-hover') {
-          const index = value
+          const index = value.split('-')[0]
+          const state = value.split('-')[1]
           const anchor = group.getLast().getChildByIndex(index)
-          anchor.attr({
-            fill: '#1890FF'
-          })
+          if (state === 'hover') {
+            anchor.attr({
+              fill: '#1890FF'
+            })
+          } else {
+            anchor.attr({
+              fill: '#fff'
+            })
+          }
         }
-        if (name === 'anchor-leave') {
-          const anchor = group.getLast().find(item => {
-            return item.attr('fill') === '#1890FF'
-          })
-          if (value && anchor) {
-            anchor.attr({ fill: '#fff' })
+        if (name === 'node-hover') {
+          if (value) {
+            // keyshape 转换鼠标指针
+            group.getFirst().attr({ cursor: 'move' })
+            // 文字转换鼠标指针
+            group.getChildByIndex(1).attr({ cursor: 'move' })
           }
         }
       },
@@ -256,34 +259,6 @@
       },
     }, 'single-node')
     G6.registerNode('process', {
-      drawAnchor(group) {
-        const bbox = group.get('children')[0].getBBox()
-        const anchorGroup = group.addGroup()
-        this.getAnchorPoints().forEach((point, index) => {
-          anchorGroup.addShape('circle', {
-            attrs: {
-              stroke: '#1890FF',
-              fill: '#fff',
-              x: bbox.minX + bbox.width * point[0],
-              y: bbox.minY + bbox.height * point[1],
-              r: 3.5,
-              lineAppendWidth: 12,
-              cursor: 'crosshair'
-            },
-            index,
-            name: 'anchor'
-          })
-        })
-      },
-      initAnchor(group) {
-        group.anchorShapes = []
-        group.showAnchor = () => {
-          this.drawAnchor(group);
-        }
-        group.clearAnchor = () => {
-          console.log('clear')
-        }
-      },
       drawShape(cfg, group) {
         const { width, height, label, id } = cfg
         const shape = group.addShape('rect', {
@@ -300,13 +275,36 @@
           },
           name: 'processShape'
         })
-        this.initAnchor(group)
         return shape
       },
       setState(name, value, node) {
         const group = node.getContainer()
         if (name === 'show-anchor') {
-          value ? group.showAnchor() : clearAnchor()
+          if (value) {
+            const bbox = group.get('children')[0].getBBox()
+            const anchorGroup = group.addGroup()
+            this.getAnchorPoints().forEach((point, index) => {
+              anchorGroup.addShape('circle', {
+                attrs: {
+                  stroke: '#1890FF',
+                  fill: '#fff',
+                  x: bbox.minX + bbox.width * point[0],
+                  y: bbox.minY + bbox.height * point[1],
+                  r: 3.5,
+                  lineAppendWidth: 12,
+                  cursor: 'crosshair',
+                  opacity: 1
+                },
+                index,
+                name: 'anchor'
+              })
+            })
+          } else {
+            const anchors = group.getLast().findAll(item => item)
+            anchors.forEach(anchor => {
+              anchor.attr({ opacity: 0 })
+            })
+          }
         }
         if (name === 'selected') {
           const shape = group.getChildByIndex(0)
@@ -325,18 +323,25 @@
             )
         }
         if (name === 'anchor-hover') {
-          const index = value
+          const index = value.split('-')[0]
+          const state = value.split('-')[1]
           const anchor = group.getLast().getChildByIndex(index)
-          anchor.attr({
-            fill: '#1890FF'
-          })
+          if (state === 'hover') {
+            anchor.attr({
+              fill: '#1890FF'
+            })
+          } else {
+            anchor.attr({
+              fill: '#fff'
+            })
+          }
         }
-        if (name === 'anchor-leave') {
-          const anchor = group.getLast().find(item => {
-            return item.attr('fill') === '#1890FF'
-          })
-          if (value && anchor) {
-            anchor.attr({ fill: '#fff' })
+        if (name === 'node-hover') {
+          if (value) {
+            // keyshape 转换鼠标指针
+            group.getFirst().attr({ cursor: 'move' })
+            // 文字转换鼠标指针
+            group.getChildByIndex(1).attr({ cursor: 'move' })
           }
         }
       },
@@ -350,34 +355,6 @@
       },
     }, 'single-node')
     G6.registerNode('decision', {
-      drawAnchor(group) {
-        const bbox = group.get('children')[0].getBBox()
-        const anchorGroup = group.addGroup()
-        this.getAnchorPoints().forEach((point, index) => {
-          anchorGroup.addShape('circle', {
-            attrs: {
-              stroke: '#1890FF',
-              fill: '#fff',
-              x: bbox.minX + bbox.width * point[0],
-              y: bbox.minY + bbox.height * point[1],
-              r: 3.5,
-              lineAppendWidth: 12,
-              cursor: 'crosshair'
-            },
-            index,
-            name: 'anchor'
-          })
-        })
-      },
-      initAnchor(group) {
-        group.anchorShapes = []
-        group.showAnchor = () => {
-          this.drawAnchor(group);
-        }
-        group.clearAnchor = () => {
-          console.log('clear')
-        }
-      },
       drawShape(cfg, group) {
         const { width, height, label, id } = cfg
         const shape = group.addShape('polygon', {
@@ -397,13 +374,36 @@
           },
           name: 'decisionShape'
         })
-        this.initAnchor(group)
         return shape
       },
       setState(name, value, node) {
         const group = node.getContainer()
         if (name === 'show-anchor') {
-          value ? group.showAnchor() : clearAnchor()
+          if (value) {
+            const bbox = group.get('children')[0].getBBox()
+            const anchorGroup = group.addGroup()
+            this.getAnchorPoints().forEach((point, index) => {
+              anchorGroup.addShape('circle', {
+                attrs: {
+                  stroke: '#1890FF',
+                  fill: '#fff',
+                  x: bbox.minX + bbox.width * point[0],
+                  y: bbox.minY + bbox.height * point[1],
+                  r: 3.5,
+                  lineAppendWidth: 12,
+                  cursor: 'crosshair',
+                  opacity: 1
+                },
+                index,
+                name: 'anchor'
+              })
+            })
+          } else {
+            const anchors = group.getLast().findAll(item => item)
+            anchors.forEach(anchor => {
+              anchor.attr({ opacity: 0 })
+            })
+          }
         }
         if (name === 'selected') {
           const shape = group.getChildByIndex(0)
@@ -422,18 +422,25 @@
             )
         }
         if (name === 'anchor-hover') {
-          const index = value
+          const index = value.split('-')[0]
+          const state = value.split('-')[1]
           const anchor = group.getLast().getChildByIndex(index)
-          anchor.attr({
-            fill: '#1890FF'
-          })
+          if (state === 'hover') {
+            anchor.attr({
+              fill: '#1890FF'
+            })
+          } else {
+            anchor.attr({
+              fill: '#fff'
+            })
+          }
         }
-        if (name === 'anchor-leave') {
-          const anchor = group.getLast().find(item => {
-            return item.attr('fill') === '#1890FF'
-          })
-          if (value && anchor) {
-            anchor.attr({ fill: '#fff' })
+        if (name === 'node-hover') {
+          if (value) {
+            // keyshape 转换鼠标指针
+            group.getFirst().attr({ cursor: 'move' })
+            // 文字转换鼠标指针
+            group.getChildByIndex(1).attr({ cursor: 'move' })
           }
         }
       },
@@ -447,34 +454,6 @@
       }
     }, 'single-node')
     G6.registerNode('io', {
-      drawAnchor(group) {
-        const bbox = group.get('children')[0].getBBox()
-        const anchorGroup = group.addGroup()
-        this.getAnchorPoints().forEach((point, index) => {
-          anchorGroup.addShape('circle', {
-            attrs: {
-              stroke: '#1890FF',
-              fill: '#fff',
-              x: bbox.minX + bbox.width * point[0],
-              y: bbox.minY + bbox.height * point[1],
-              r: 3.5,
-              lineAppendWidth: 12,
-              cursor: 'crosshair'
-            },
-            index,
-            name: 'anchor'
-          })
-        })
-      },
-      initAnchor(group) {
-        group.anchorShapes = []
-        group.showAnchor = () => {
-          this.drawAnchor(group);
-        }
-        group.clearAnchor = () => {
-          console.log('clear')
-        }
-      },
       drawShape(cfg, group) {
         const { width, height, label, id } = cfg
         const shape = group.addShape('polygon', {
@@ -494,13 +473,36 @@
           },
           name: 'ioShape'
         })
-        this.initAnchor(group)
         return shape
       },
       setState(name, value, node) {
         const group = node.getContainer()
         if (name === 'show-anchor') {
-          value ? group.showAnchor() : clearAnchor()
+          if (value) {
+            const bbox = group.get('children')[0].getBBox()
+            const anchorGroup = group.addGroup()
+            this.getAnchorPoints().forEach((point, index) => {
+              anchorGroup.addShape('circle', {
+                attrs: {
+                  stroke: '#1890FF',
+                  fill: '#fff',
+                  x: bbox.minX + bbox.width * point[0],
+                  y: bbox.minY + bbox.height * point[1],
+                  r: 3.5,
+                  lineAppendWidth: 12,
+                  cursor: 'crosshair',
+                  opacity: 1
+                },
+                index,
+                name: 'anchor'
+              })
+            })
+          } else {
+            const anchors = group.getLast().findAll(item => item)
+            anchors.forEach(anchor => {
+              anchor.attr({ opacity: 0 })
+            })
+          }
         }
         if (name === 'selected') {
           const shape = group.getChildByIndex(0)
@@ -519,18 +521,25 @@
             )
         }
         if (name === 'anchor-hover') {
-          const index = value
+          const index = value.split('-')[0]
+          const state = value.split('-')[1]
           const anchor = group.getLast().getChildByIndex(index)
-          anchor.attr({
-            fill: '#1890FF'
-          })
+          if (state === 'hover') {
+            anchor.attr({
+              fill: '#1890FF'
+            })
+          } else {
+            anchor.attr({
+              fill: '#fff'
+            })
+          }
         }
-        if (name === 'anchor-leave') {
-          const anchor = group.getLast().find(item => {
-            return item.attr('fill') === '#1890FF'
-          })
-          if (value && anchor) {
-            anchor.attr({ fill: '#fff' })
+        if (name === 'node-hover') {
+          if (value) {
+            // keyshape 转换鼠标指针
+            group.getFirst().attr({ cursor: 'move' })
+            // 文字转换鼠标指针
+            group.getChildByIndex(1).attr({ cursor: 'move' })
           }
         }
       },
@@ -544,34 +553,6 @@
       },
     }, 'single-node')
     G6.registerNode('terminal', {
-      drawAnchor(group) {
-        const bbox = group.get('children')[0].getBBox()
-        const anchorGroup = group.addGroup()
-        this.getAnchorPoints().forEach((point, index) => {
-          anchorGroup.addShape('circle', {
-            attrs: {
-              stroke: '#1890FF',
-              fill: '#fff',
-              x: bbox.minX + bbox.width * point[0],
-              y: bbox.minY + bbox.height * point[1],
-              r: 3.5,
-              lineAppendWidth: 12,
-              cursor: 'crosshair'
-            },
-            index,
-            name: 'anchor'
-          })
-        })
-      },
-      initAnchor(group) {
-        group.anchorShapes = []
-        group.showAnchor = () => {
-          this.drawAnchor(group);
-        }
-        group.clearAnchor = () => {
-          console.log('clear')
-        }
-      },
       drawShape(cfg, group) {
         const { width, height, label, id } = cfg
         const shape = group.addShape('rect', {
@@ -588,13 +569,36 @@
           },
           name: 'terminalShape'
         })
-        this.initAnchor(group)
         return shape
       },
       setState(name, value, node) {
         const group = node.getContainer()
         if (name === 'show-anchor') {
-          value ? group.showAnchor() : clearAnchor()
+          if (value) {
+            const bbox = group.get('children')[0].getBBox()
+            const anchorGroup = group.addGroup()
+            this.getAnchorPoints().forEach((point, index) => {
+              anchorGroup.addShape('circle', {
+                attrs: {
+                  stroke: '#1890FF',
+                  fill: '#fff',
+                  x: bbox.minX + bbox.width * point[0],
+                  y: bbox.minY + bbox.height * point[1],
+                  r: 3.5,
+                  lineAppendWidth: 12,
+                  cursor: 'crosshair',
+                  opacity: 1
+                },
+                index,
+                name: 'anchor'
+              })
+            })
+          } else {
+            const anchors = group.getLast().findAll(item => item)
+            anchors.forEach(anchor => {
+              anchor.attr({ opacity: 0 })
+            })
+          }
         }
         if (name === 'selected') {
           const shape = group.getChildByIndex(0)
@@ -613,18 +617,25 @@
             )
         }
         if (name === 'anchor-hover') {
-          const index = value
+          const index = value.split('-')[0]
+          const state = value.split('-')[1]
           const anchor = group.getLast().getChildByIndex(index)
-          anchor.attr({
-            fill: '#1890FF'
-          })
+          if (state === 'hover') {
+            anchor.attr({
+              fill: '#1890FF'
+            })
+          } else {
+            anchor.attr({
+              fill: '#fff'
+            })
+          }
         }
-        if (name === 'anchor-leave') {
-          const anchor = group.getLast().find(item => {
-            return item.attr('fill') === '#1890FF'
-          })
-          if (value && anchor) {
-            anchor.attr({ fill: '#fff' })
+        if (name === 'node-hover') {
+          if (value) {
+            // keyshape 转换鼠标指针
+            group.getFirst().attr({ cursor: 'move' })
+            // 文字转换鼠标指针
+            group.getChildByIndex(1).attr({ cursor: 'move' })
           }
         }
       },
@@ -637,6 +648,63 @@
         ]
       },
     }, 'single-node')
+    G6.registerBehavior('clickSelected', {
+      getEvents() {
+        return {
+          'node:click': 'onNodeClick',
+          'canvas:click': 'onCanvasClick'
+        }
+      },
+      onNodeClick(e) {
+        const self = this
+        const graph = self.graph
+        const { item } = e
+        const selectedNodes = graph.findAllByState('node', 'selected')
+        if (selectedNodes.length) {
+          selectedNodes.forEach(node => {
+            graph.clearItemStates(node, 'selected')
+            graph.setItemState(node, 'show-anchor', false)
+          })
+        }
+        if (!item.hasState('selected')) {
+          item.setState('selected', true)
+        }
+      },
+      onCanvasClick(e) {
+        const self = this
+        const graph = self.graph
+        const nodes = graph.findAllByState('node', 'selected')
+        if (nodes.length) {
+          nodes.forEach(node => {
+            graph.clearItemStates(node, 'selected')
+            // 清除状态并不会重绘，只会对现有属性进行更改
+            graph.setItemState(node, 'show-anchor', false)
+          })
+        }
+      }
+    })
+    G6.registerBehavior('hoverNodeActived', {
+      getEvents() {
+        return {
+          'node:mouseover': 'onMouseOver',
+          'node:mouseleave': 'onMouseLeave',
+        }
+      },
+      onMouseOver(e) {
+        const { item } = e
+        graph.setItemState(item, 'node-hover', true)
+        if (!item.hasState('selected')) {
+          item.setState('show-anchor', true)
+        }
+      },
+      onMouseLeave(e) {
+        const { item } = e
+        graph.clearItemStates(item, 'node-hover')
+        if (!item.hasState('selected')) {
+          item.setState('show-anchor', false)
+        }
+      }
+    })
     G6.registerBehavior('hoverAnchorActived', {
       getEvents() {
         return {
@@ -651,15 +719,17 @@
 
         if (e.target.get('name') === 'anchor') {
           const index = e.target.get('index')
-          graph.setItemState(item, 'anchor-hover', index)
-          graph.setItemState(item, 'anchor-leave', false)
+          graph.setItemState(item, 'anchor-hover', `${index}-hover`)
         }
       },
       onMouseOut(e) {
         const self = this
         const graph = self.graph
         const { item } = e
-        graph.setItemState(item, 'anchor-leave', true)
+        if (e.target.get('name') === 'anchor') {
+          const index = e.target.get('index')
+          graph.setItemState(item, 'anchor-hover', `${index}-leave`)
+        }
       }
     })
     G6.registerBehavior('dragCanvasCursor', {
@@ -667,10 +737,10 @@
         return {
           'canvas:dragstart': 'onDragStart',
           'canvas:dragend': 'onDragEnd',
-          'canvas:mouseenter': 'onMouseEnter'
+          'canvas:mousemove': 'onMouseMove'
         }
       },
-      onMouseEnter() {
+      onMouseMove() {
         const self = this
         const graph = self.graph
         // 进入画布时，鼠标指针变为抓手
@@ -766,6 +836,14 @@
             id
           })
           this._clearDelegate()
+          const selectedNodes = graph.findAllByState('node', 'selected')
+          if (selectedNodes.length) {
+            selectedNodes.forEach(node => {
+              graph.clearItemStates(node, 'selected')
+              // 清除状态并不会重绘，只会对现有属性进行更改
+              graph.setItemState(node, 'show-anchor', false)
+            })
+          }
           graph.setItemState(id, 'show-anchor', true)
           graph.setItemState(id, 'selected', true)
         }
@@ -782,6 +860,39 @@
         graph.emit('afternodedragend')
       }
     })
+    G6.registerBehavior('dragNode', {
+      getEvents() {
+        return {
+          'node:dragstart': 'onDragStart',
+          'node:drag': 'onDrag',
+          'node:dragend': 'onDragEnd'
+        }
+      },
+      onDragStart(e) {
+        console.log('drag-start', e)
+        const self = this
+        const graph = self.graph
+        const { item } = e
+        const model = item.getModel()
+        const { canvasX: x, canvasY: y } = e
+        const { width, height } = model
+        graph.addItem('node', {
+          type: 'rect',
+          x,
+          y,
+          style: {
+            width: parseInt(width),
+            height: parseInt(height)
+          }
+        }, true)
+      },
+      onDrag(e) {
+        console.log('drag', e)
+      },
+      onDragEnd(e) {
+        console.log('drag-end', e)
+      }
+    })
     const graph = new G6.Graph({
       container: 'canvas',
       width: container.clientWidth - 480,
@@ -795,8 +906,11 @@
         edit: [
           'drag-canvas',
           'dragPanelItemAddNode',
+          'dragNode',
           'dragCanvasCursor',
-          'hoverAnchorActived'
+          'hoverAnchorActived',
+          'hoverNodeActived',
+          'clickSelected'
         ]
       },
       plugins: [minimap]

@@ -79,7 +79,43 @@
     }
 
     .property {
-      flex: 1
+      flex: 1;
+      padding: 16px;
+    }
+
+    .property .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .property .row .label {
+      text-align: right;
+      margin-right: 8px;
+    }
+
+    .property .row .input {
+      font-variant: tabular-nums;
+      width: 100%;
+      padding: 4px 11px;
+      border: 1px solid #d9d9d9;
+      border-radius: 2px;
+      line-height: 1.5715;
+      color: rgba(0, 0, 0, .85);
+    }
+
+    .property .row .input:focus {
+      border-color: #40a9ff;
+      outline: 0;
+      box-shadow: 0 0 0 2px rgba(24, 144, 255, .2);
+    }
+
+    .property .row .input:hover {
+      border-color: #40a9ff;
+    }
+
+    .property .row .label::after {
+      content: ':'
     }
 
     .canvas {
@@ -116,7 +152,7 @@
       </div>
       <div class="canvas" id="canvas"></div>
       <div class="detail-panel">
-        <div class="panel-header">Canvas</div>
+        <div class="panel-header" id="property-title">Canvas</div>
         <div class="property"></div>
         <div class="panel-header">Minimap</div>
         <div class="minimap"></div>
@@ -668,17 +704,23 @@
         }
         if (!item.hasState('selected')) {
           item.setState('selected', true)
+          setDetailPanel(item)
         }
       },
       onCanvasClick(e) {
         const self = this
         const graph = self.graph
-        const nodes = graph.findAllByState('node', 'selected')
-        if (nodes.length) {
-          nodes.forEach(node => {
+        const selectedNodes = graph.findAllByState('node', 'selected')
+        const anchorNodes = graph.findAllByState('node', 'show-anchor')
+        setDetailPanel('canvas')
+        if (selectedNodes.length) {
+          selectedNodes.forEach(node => {
             graph.clearItemStates(node, 'selected')
-            // 清除状态并不会重绘，只会对现有属性进行更改
-            graph.setItemState(node, 'show-anchor', false)
+          })
+        }
+        if (anchorNodes.length) {
+          anchorNodes.forEach(node => {
+            graph.clearItemStates(node, 'show-anchor')
           })
         }
       }
@@ -834,7 +876,7 @@
             x,
             y,
             id
-          })
+          }, true)
           this._clearDelegate()
           const selectedNodes = graph.findAllByState('node', 'selected')
           if (selectedNodes.length) {
@@ -846,6 +888,7 @@
           }
           graph.setItemState(id, 'show-anchor', true)
           graph.setItemState(id, 'selected', true)
+          setDetailPanel(graph.findById(id))
         }
       },
       _clearDelegate() {
@@ -869,30 +912,116 @@
         }
       },
       onDragStart(e) {
-        console.log('drag-start', e)
         const self = this
         const graph = self.graph
         const { item } = e
         const model = item.getModel()
         const { canvasX: x, canvasY: y } = e
-        const { width, height } = model
+        const { width, height, id } = model
         graph.addItem('node', {
           type: 'rect',
           x,
           y,
           style: {
             width: parseInt(width),
-            height: parseInt(height)
-          }
+            height: parseInt(height),
+            stroke: '#1890FF',
+            fill: '#1890FF',
+            fillOpacity: .08,
+            lineDash: [4, 4],
+            radius: 4,
+            lineWidth: 1,
+          },
+          id: 'delegateShape',
         }, true)
       },
       onDrag(e) {
-        console.log('drag', e)
+        const self = this
+        const graph = self.graph
+        const { canvasX: x, canvasY: y, item } = e
+        const delegateShape = graph.findById('delegateShape')
+        const cfg = {
+          x,
+          y
+        }
+        delegateShape.updatePosition(cfg)
+        const delegateContainer = delegateShape.getBBox()
+        // tc: TopCenter
+        // cc: CenterCenter
+        // bc: BottomCenter
+        // lc: LeftCenter
+        // rc: RightCenter
+        const tc = {
+          x: delegateContainer.x + delegateContainer.width / 2,
+          y: delegateContainer.y
+        }
+        const cc = {
+          x: delegateContainer.x + delegateContainer.width / 2,
+          y: delegateContainer.y + delegateContainer.height / 2
+        }
+        const bc = {
+          x: delegateContainer.x + delegateContainer.width / 2,
+          y: delegateContainer.y + delegateContainer.height
+        }
+        const lc = {
+          x: delegateContainer.x,
+          y: delegateContainer.y + delegateContainer.height / 2
+        }
+        const rc = {
+          x: delegateContainer.x + delegateContainer.width,
+          y: delegateContainer.y + delegateContainer.height / 2
+        }
+        const nodes = graph.getNodes()
       },
       onDragEnd(e) {
-        console.log('drag-end', e)
+        const self = this
+        const graph = self.graph
+        const { canvasX: x, canvasY: y, item } = e
+        const cfg = {
+          x,
+          y
+        }
+        const delegateShape = graph.findById('delegateShape')
+        item.updatePosition(cfg)
+        graph.removeItem(delegateShape)
       }
     })
+    function updateNode(input, target) {
+      input.addEventListener('change', e => {
+        const label = e.target.value
+        target.update({
+          label
+        })
+      })
+    }
+    function setDetailPanel(item) {
+      const detailPanelTitle = document.querySelector('#property-title')
+      const propertyContainer = document.querySelector('.property')
+      const row = document.createElement('div')
+      row.className = 'row'
+      const label = document.createElement('div')
+      label.innerHTML = 'Label'
+      label.className = 'label'
+      row.appendChild(label)
+      const input = document.createElement('input')
+      input.className = 'input'
+      row.appendChild(input)
+      if (item === 'canvas') {
+        detailPanelTitle.innerHTML = 'Canvas'
+        if (propertyContainer.children.length) {
+          propertyContainer.innerHTML = ''
+        }
+      } else {
+        if (item.getType() === 'node') {
+          const { label } = item.getModel()
+          detailPanelTitle.innerHTML = 'Node'
+          propertyContainer.innerHTML = ''
+          propertyContainer.appendChild(row)
+          input.value = label
+          updateNode(input, item)
+        }
+      }
+    }
     const graph = new G6.Graph({
       container: 'canvas',
       width: container.clientWidth - 480,

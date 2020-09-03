@@ -706,23 +706,21 @@
           item.setState('selected', true)
           setDetailPanel(item)
         }
+        item.setState('show-anchor', true)
       },
       onCanvasClick(e) {
         const self = this
         const graph = self.graph
-        const selectedNodes = graph.findAllByState('node', 'selected')
-        const anchorNodes = graph.findAllByState('node', 'show-anchor')
-        setDetailPanel('canvas')
-        if (selectedNodes.length) {
-          selectedNodes.forEach(node => {
+        const nodes = graph.getNodes()
+        nodes.forEach(node => {
+          if (node.hasState('selected')) {
             graph.clearItemStates(node, 'selected')
-          })
-        }
-        if (anchorNodes.length) {
-          anchorNodes.forEach(node => {
+          }
+          if (node.hasState('show-anchor')) {
             graph.clearItemStates(node, 'show-anchor')
-          })
-        }
+          }
+        })
+        setDetailPanel('canvas')
       }
     })
     G6.registerBehavior('hoverNodeActived', {
@@ -741,7 +739,7 @@
       },
       onMouseLeave(e) {
         const { item } = e
-        graph.clearItemStates(item, 'node-hover')
+        graph.clearItemStates(item, 'node-hover', 'anchor-hover')
         if (!item.hasState('selected')) {
           item.setState('show-anchor', false)
         }
@@ -915,6 +913,9 @@
         const self = this
         const graph = self.graph
         const { item } = e
+        if (!item.hasState('selected')) {
+          item.clearStates('show-anchor')
+        }
         const model = item.getModel()
         const { canvasX: x, canvasY: y } = e
         const { width, height, id } = model
@@ -938,44 +939,525 @@
       onDrag(e) {
         const self = this
         const graph = self.graph
+        const group = graph.get('group')
         const { canvasX: x, canvasY: y, item } = e
         const delegateShape = graph.findById('delegateShape')
-        const cfg = {
+        let delegateCfg = {
           x,
           y
         }
-        delegateShape.updatePosition(cfg)
+        delegateShape.updatePosition(delegateCfg)
         const delegateContainer = delegateShape.getBBox()
-        // tc: TopCenter
-        // cc: CenterCenter
-        // bc: BottomCenter
-        // lc: LeftCenter
-        // rc: RightCenter
-        const tc = {
-          x: delegateContainer.x + delegateContainer.width / 2,
-          y: delegateContainer.y
+        const { minX: delegateMinX, minY: delegateMinY, maxX: delegateMaxX, maxY: delegateMaxY, centerX: delegateCenterX, centerY: delegateCenterY } = delegateContainer
+        const nodes = graph.findAll('node', (node) => {
+          return node.get('id') !== 'delegateShape'
+        })
+        let xNearNode
+        let yNearNode
+        let xDistance
+        let yDistance
+        // find nearest node
+        nodes.forEach(node => {
+          const { minX: nodeMinX, minY: nodeMinY, maxX: nodeMaxX, maxY: nodeMaxY, centerX: nodeCenterX, centerY: nodeCenterY } = node.getBBox()
+          if (!xDistance) {
+            xDistance = Math.abs(delegateMinX - nodeMinX)
+            xNearNode = node
+          }
+          if (!yDistance) {
+            yDistance = Math.abs(delegateMinY - nodeMinY)
+            yNearNode = node
+          }
+          if (Math.abs(delegateMinX - nodeMinX) < xDistance) {
+            xDistance = Math.abs(delegateMinX - nodeMinX)
+            xNearNode = node
+          }
+          if (Math.abs(delegateMinY - nodeMinY) < yDistance) {
+            yDistance = Math.abs(delegateMinY - nodeMinY)
+            yNearNode = node
+          }
+        })
+
+        const { minX: xNearNodeMinX, minY: xNearNodeMinY, maxX: xNearNodeMaxX, maxY: xNearNodeMaxY, centerX: xNearNodeCenterX, centerY: xNearNodeCenterY } = xNearNode.getBBox()
+        const { minX: yNearNodeMinX, minY: yNearNodeMinY, maxX: yNearNodeMaxX, maxY: yNearNodeMaxY, centerX: yNearNodeCenterX, centerY: yNearNodeCenterY } = yNearNode.getBBox()
+        let verticalStartPoint
+        let verticalEndPoint
+        let horizontalStartPoint
+        let horizontalEndPoint
+        const verticalAlignLine = group.findById('verticle-align-line')
+        const horizontalAlignLine = group.findById('horizontal-align-line')
+        const tolerance = 3
+        if (Math.abs(delegateMinX - xNearNodeMinX) < tolerance) {
+          if (delegateCenterY > xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeMinX,
+              y: xNearNodeMinY
+            }
+            verticalEndPoint = {
+              x: xNearNodeMinX,
+              y: delegateMaxY
+            }
+          }
+          if (delegateCenterY < xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeMinX,
+              y: xNearNodeMaxY
+            }
+            verticalEndPoint = {
+              x: xNearNodeMinX,
+              y: delegateMinY
+            }
+          }
         }
-        const cc = {
-          x: delegateContainer.x + delegateContainer.width / 2,
-          y: delegateContainer.y + delegateContainer.height / 2
+        if (Math.abs(Math.floor(delegateMinX) - xNearNodeCenterX) < tolerance) {
+          if (delegateCenterY > xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeCenterX,
+              y: xNearNodeMinY
+            }
+            verticalEndPoint = {
+              x: xNearNodeCenterX,
+              y: delegateMaxY
+            }
+          }
+          if (delegateCenterY < xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeCenterX,
+              y: xNearNodeMaxY
+            }
+            verticalEndPoint = {
+              x: xNearNodeCenterX,
+              y: delegateMinY
+            }
+          }
         }
-        const bc = {
-          x: delegateContainer.x + delegateContainer.width / 2,
-          y: delegateContainer.y + delegateContainer.height
+        if (Math.abs(delegateMinX - xNearNodeMaxX) < tolerance) {
+          if (delegateCenterY > xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeMaxX,
+              y: xNearNodeMinY
+            }
+            verticalEndPoint = {
+              x: xNearNodeMaxX,
+              y: delegateMaxY
+            }
+          }
+          if (delegateCenterY < xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeMaxX,
+              y: xNearNodeMaxY
+            }
+            verticalEndPoint = {
+              x: xNearNodeMaxX,
+              y: delegateMinY
+            }
+          }
         }
-        const lc = {
-          x: delegateContainer.x,
-          y: delegateContainer.y + delegateContainer.height / 2
+        if (Math.abs(delegateCenterX - Math.floor(xNearNodeMinX)) < tolerance) {
+          if (delegateCenterY > xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeMinX,
+              y: xNearNodeMinY
+            }
+            verticalEndPoint = {
+              x: xNearNodeMinX,
+              y: delegateMaxY
+            }
+          }
+          if (delegateCenterY < xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeMinX,
+              y: xNearNodeMaxY
+            }
+            verticalEndPoint = {
+              x: xNearNodeMinX,
+              y: delegateMinY
+            }
+          }
         }
-        const rc = {
-          x: delegateContainer.x + delegateContainer.width,
-          y: delegateContainer.y + delegateContainer.height / 2
+        if (Math.abs(delegateCenterX - xNearNodeCenterX) < tolerance) {
+          if (delegateCenterY > xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeCenterX,
+              y: xNearNodeMinY
+            }
+            verticalEndPoint = {
+              x: xNearNodeCenterX,
+              y: delegateMaxY
+            }
+          }
+          if (delegateCenterY < xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeCenterX,
+              y: xNearNodeMaxY
+            }
+            verticalEndPoint = {
+              x: xNearNodeCenterX,
+              y: delegateMinY
+            }
+          }
         }
-        const nodes = graph.getNodes()
+        if (Math.abs(delegateCenterX - Math.floor(xNearNodeMaxX)) < tolerance) {
+          if (delegateCenterY > xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeMaxX,
+              y: xNearNodeMinY
+            }
+            verticalEndPoint = {
+              x: xNearNodeMaxX,
+              y: delegateMaxY
+            }
+          }
+          if (delegateCenterY < xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeMaxX,
+              y: xNearNodeMaxY
+            }
+            verticalEndPoint = {
+              x: xNearNodeMaxX,
+              y: delegateMinY
+            }
+          }
+        }
+        if (Math.abs(delegateMaxX - xNearNodeMinX) < tolerance) {
+          if (delegateCenterY > xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeMinX,
+              y: xNearNodeMinY
+            }
+            verticalEndPoint = {
+              x: xNearNodeMinX,
+              y: delegateMaxY
+            }
+          }
+          if (delegateCenterY < xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeMinX,
+              y: xNearNodeMaxY
+            }
+            verticalEndPoint = {
+              x: xNearNodeMinX,
+              y: delegateMinY
+            }
+          }
+        }
+        if (Math.abs(Math.floor(delegateMaxX) - xNearNodeCenterX) < tolerance) {
+          if (delegateCenterY > xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeCenterX,
+              y: xNearNodeMinY
+            }
+            verticalEndPoint = {
+              x: xNearNodeCenterX,
+              y: delegateMaxY
+            }
+          }
+          if (delegateCenterY < xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeCenterX,
+              y: xNearNodeMaxY
+            }
+            verticalEndPoint = {
+              x: xNearNodeCenterX,
+              y: delegateMinY
+            }
+          }
+        }
+        if (Math.abs(delegateMaxX - xNearNodeMaxX) < tolerance) {
+          if (delegateCenterY > xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeMaxX,
+              y: xNearNodeMinY
+            }
+            verticalEndPoint = {
+              x: xNearNodeMaxX,
+              y: delegateMaxY
+            }
+          }
+          if (delegateCenterY < xNearNodeCenterY) {
+            verticalStartPoint = {
+              x: xNearNodeMaxX,
+              y: xNearNodeMaxY
+            }
+            verticalEndPoint = {
+              x: xNearNodeMaxX,
+              y: delegateMinY
+            }
+          }
+        }
+
+        if (Math.abs(delegateMinY - yNearNodeMinY) < tolerance) {
+          if (delegateCenterX > yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMinX,
+              y: yNearNodeMinY
+            }
+            horizontalEndPoint = {
+              x: delegateMaxX,
+              y: yNearNodeMinY
+            }
+          }
+          if (delegateCenterX < yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMaxX,
+              y: yNearNodeMinY
+            }
+            horizontalEndPoint = {
+              x: delegateMinX,
+              y: yNearNodeMinY
+            }
+          }
+        }
+        if (Math.abs(Math.floor(delegateMinY) - yNearNodeCenterY) < tolerance) {
+          if (delegateCenterX > yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMinX,
+              y: yNearNodeCenterY
+            }
+            horizontalEndPoint = {
+              x: delegateMaxX,
+              y: yNearNodeCenterY
+            }
+          }
+          if (delegateCenterX < yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMaxX,
+              y: yNearNodeCenterY
+            }
+            horizontalEndPoint = {
+              x: delegateMinX,
+              y: yNearNodeCenterY
+            }
+          }
+        }
+        if (Math.abs(delegateMinY - yNearNodeMaxY) < tolerance) {
+          if (delegateCenterX > yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMinX,
+              y: yNearNodeMaxY
+            }
+            horizontalEndPoint = {
+              x: delegateMaxX,
+              y: yNearNodeMaxY
+            }
+          }
+          if (delegateCenterX < yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMaxX,
+              y: yNearNodeMaxY
+            }
+            horizontalEndPoint = {
+              x: delegateMinX,
+              y: yNearNodeMaxY
+            }
+          }
+        }
+        if (Math.abs(delegateCenterY - Math.floor(yNearNodeMinY)) < tolerance) {
+          if (delegateCenterX > yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMinX,
+              y: yNearNodeMinY
+            }
+            horizontalEndPoint = {
+              x: delegateMaxX,
+              y: yNearNodeMinY
+            }
+          }
+          if (delegateCenterX < yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMaxX,
+              y: yNearNodeMinY
+            }
+            horizontalEndPoint = {
+              x: delegateMinX,
+              y: yNearNodeMinY
+            }
+          }
+        }
+        if (Math.abs(delegateCenterY - yNearNodeCenterY) < tolerance) {
+          if (delegateCenterX > yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMinX,
+              y: yNearNodeCenterY
+            }
+            horizontalEndPoint = {
+              x: delegateMaxX,
+              y: yNearNodeCenterY
+            }
+          }
+          if (delegateCenterX < yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMaxX,
+              y: yNearNodeCenterY
+            }
+            horizontalEndPoint = {
+              x: delegateMinX,
+              y: yNearNodeCenterY
+            }
+          }
+        }
+        if (Math.abs(delegateCenterY - Math.floor(yNearNodeMaxY)) < tolerance) {
+          if (delegateCenterX > yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMinX,
+              y: yNearNodeMaxY
+            }
+            horizontalEndPoint = {
+              x: delegateMaxX,
+              y: yNearNodeMaxY
+            }
+          }
+          if (delegateCenterX < yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMaxX,
+              y: yNearNodeMaxY
+            }
+            horizontalEndPoint = {
+              x: delegateMinX,
+              y: yNearNodeMaxY
+            }
+          }
+        }
+        if (Math.abs(delegateMaxY - yNearNodeMinY) < tolerance) {
+          if (delegateCenterX > yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMinX,
+              y: yNearNodeMinY
+            }
+            horizontalEndPoint = {
+              x: delegateMaxX,
+              y: yNearNodeMinY
+            }
+          }
+          if (delegateCenterX < yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMaxX,
+              y: yNearNodeMinY
+            }
+            horizontalEndPoint = {
+              x: delegateMinX,
+              y: yNearNodeMinY
+            }
+          }
+        }
+        if (Math.abs(Math.floor(delegateMaxY) - yNearNodeCenterY) < tolerance) {
+          if (delegateCenterX > yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMinX,
+              y: yNearNodeCenterY
+            }
+            horizontalEndPoint = {
+              x: delegateMaxX,
+              y: yNearNodeCenterY
+            }
+          }
+          if (delegateCenterX < yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMaxX,
+              y: yNearNodeCenterY
+            }
+            horizontalEndPoint = {
+              x: delegateMinX,
+              y: yNearNodeCenterY
+            }
+          }
+        }
+        if (Math.abs(delegateMaxY - yNearNodeMaxY) < tolerance) {
+          if (delegateCenterX > yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMinX,
+              y: yNearNodeMaxY
+            }
+            horizontalEndPoint = {
+              x: delegateMaxX,
+              y: yNearNodeMaxY
+            }
+          }
+          if (delegateCenterX < yNearNodeCenterX) {
+            horizontalStartPoint = {
+              x: yNearNodeMaxX,
+              y: yNearNodeMaxY
+            }
+            horizontalEndPoint = {
+              x: delegateMinX,
+              y: yNearNodeMaxY
+            }
+          }
+        }
+
+        if (!verticalAlignLine) {
+          group.addShape('path', {
+            attrs: {
+              path: [
+                ['M', xNearNodeCenterX, xNearNodeCenterY],
+                ['L', delegateCenterX, delegateCenterY]
+              ],
+              stroke: '#FA8C16',
+              opacity: 0,
+              lineWidth: 1
+            },
+            id: 'verticle-align-line'
+          })
+        } else {
+          if (verticalStartPoint && verticalEndPoint) {
+            verticalAlignLine.attr({
+              path: [
+                ['M', verticalStartPoint.x, verticalStartPoint.y],
+                ['L', verticalEndPoint.x, verticalEndPoint.y]
+              ],
+              opacity: 0.8
+            })
+          } else {
+            verticalAlignLine.attr({
+              path: [
+                ['M', xNearNodeCenterX, xNearNodeCenterY],
+                ['L', delegateCenterX, delegateCenterY]
+              ],
+              opacity: 0
+            })
+          }
+        }
+
+        if (!horizontalAlignLine) {
+          group.addShape('path', {
+            attrs: {
+              path: [
+                ['M', yNearNodeCenterX, yNearNodeCenterY],
+                ['L', delegateCenterX, delegateCenterY]
+              ],
+              stroke: '#FA8C16',
+              opacity: 1,
+              lineWidth: 1
+            },
+            id: 'horizontal-align-line'
+          })
+        } else {
+          if (horizontalStartPoint && horizontalEndPoint) {
+            horizontalAlignLine.attr({
+              path: [
+                ['M', horizontalStartPoint.x, horizontalStartPoint.y],
+                ['L', horizontalEndPoint.x, horizontalEndPoint.y]
+              ],
+              opacity: 0.8
+            })
+          } else {
+            horizontalAlignLine.attr({
+              path: [
+                ['M', yNearNodeCenterX, yNearNodeCenterY],
+                ['L', delegateCenterX, delegateCenterY]
+              ],
+              opacity: 0
+            })
+          }
+        }
       },
       onDragEnd(e) {
         const self = this
         const graph = self.graph
+        const group = graph.get('group')
+        const verticalAlignLine = group.findById('verticle-align-line')
+        const horizontalAlignLine = group.findById('horizontal-align-line')
+        group.removeChild(verticalAlignLine)
+        group.removeChild(horizontalAlignLine)
         const { canvasX: x, canvasY: y, item } = e
         const cfg = {
           x,
@@ -992,6 +1474,7 @@
         target.update({
           label
         })
+        console.log(target)
       })
     }
     function setDetailPanel(item) {

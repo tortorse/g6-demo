@@ -1040,7 +1040,8 @@
       getEvents() {
         return {
           'node:click': 'onNodeClick',
-          'canvas:click': 'onCanvasClick'
+          'canvas:click': 'onCanvasClick',
+          'edge:click': 'OnEdgeClick'
         }
       },
       onNodeClick(e) {
@@ -1073,6 +1074,9 @@
           }
         })
         setDetailPanel('canvas')
+      },
+      OnEdgeClick(e) {
+        console.log(e)
       }
     })
     G6.registerBehavior('hoverNodeActived', {
@@ -1997,7 +2001,7 @@
           style: {
             stroke: '#A3B1BF',
             lineWidth: 1,
-            lineAppendWidth: 4,
+            lineAppendWidth: 8,
             endArrow: {
               path: G6.Arrow.triangle(6, 8, 0),
               d: 0,
@@ -2007,6 +2011,46 @@
         })
         const edgeGroup = graph.get('edgeGroup')
         edgeGroup.toFront()
+      }
+    })
+    G6.registerBehavior('hoverEdgeActived', {
+      getEvents() {
+        return {
+          'edge:mouseover': 'onMouseOver',
+          'edge:mouseleave': 'onMouseLeave'
+        }
+      },
+      onMouseOver(e) {
+        const self = this
+        const graph = self.graph
+        const { item } = e
+        const cfg = {
+          style: {
+            stroke: '#1890FF',
+            endArrow: {
+              path: G6.Arrow.triangle(6, 8, 0),
+              d: 0,
+              fill: '#1890FF'
+            }
+          }
+        }
+        graph.updateItem(item, cfg)
+      },
+      onMouseLeave(e) {
+        const self = this
+        const graph = self.graph
+        const { item } = e
+        const cfg = {
+          style: {
+            stroke: '#A3B1BF',
+            endArrow: {
+              path: G6.Arrow.triangle(6, 8, 0),
+              d: 0,
+              fill: '#A3B1BF'
+            }
+          }
+        }
+        graph.updateItem(item, cfg)
       }
     })
     function updateNode(input, target) {
@@ -2063,7 +2107,8 @@
           'hoverAnchorActived',
           'hoverNodeActived',
           'clickSelected',
-          'dragPoint'
+          'dragPoint',
+          'hoverEdgeActived'
         ]
       },
       plugins: [minimap]

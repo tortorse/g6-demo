@@ -1866,7 +1866,21 @@
           const delegateShape = graph.findById('delegateShape')
           item.updatePosition(cfg)
           graph.updateItem(item, {})
+          graph.setItemState(item, 'selected', true)
+          graph.setItemState(item, 'show-anchor', true)
           graph.removeItem(delegateShape)
+          const edges = graph.getEdges()
+          const edgeCfg = {
+            style: {
+              lineWidth: 1
+            }
+          }
+          edges.forEach(edge => {
+            if (edge.hasState('selected')) {
+              graph.clearItemStates(edge, 'selected')
+              graph.updateItem(edge, edgeCfg)
+            }
+          })
         }
       }
     })

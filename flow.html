@@ -202,7 +202,7 @@
     })
     G6.registerNode('start', {
       drawShape(cfg, group) {
-        const { width, height, x, y, label, id } = cfg
+        const { width, height, x, y, id } = cfg
         const shape = group.addShape('circle', {
           attrs: {
             id,
@@ -215,35 +215,90 @@
           },
           name: 'startNodeShape'
         })
+        const bbox = group.getBBox()
+        const anchorGroup = group.addGroup({
+          name: 'anchor-group',
+          zIndex: 2
+        })
+        const markerGroup = group.addGroup({
+          name: 'marker-group',
+          zIndex: 1
+        })
+        this.getAnchorPoints().forEach((point, index) => {
+          anchorGroup.addShape('circle', {
+            attrs: {
+              stroke: '#1890FF',
+              fill: '#fff',
+              x: bbox.minX + bbox.width * point[0],
+              y: bbox.minY + bbox.height * point[1],
+              r: 3.5,
+              lineAppendWidth: 12,
+              cursor: 'crosshair',
+              opacity: 0
+            },
+            index,
+            draggable: true,
+            name: 'anchor'
+          })
+          markerGroup.addShape('marker', {
+            attrs: {
+              x: bbox.minX + bbox.width * point[0],
+              y: bbox.minY + bbox.height * point[1],
+              r: 12,
+              symbol: 'circle',
+              fill: '#1890FF',
+              opacity: 0,
+              cursor: 'crosshair'
+            },
+            index,
+            capture: true,
+            draggable: true,
+            name: 'anchor-marker'
+          })
+        })
         return shape
       },
       setState(name, value, node) {
         const group = node.getContainer()
+        group.sort()
+        const anchorGroup = group.find(g => {
+          return g.get('name') === 'anchor-group'
+        })
+        const markerGroup = group.find(g => {
+          return g.get('name') === 'marker-group'
+        })
+        const anchors = anchorGroup.findAll(anchor => {
+          return anchor.get('name') === 'anchor'
+        })
+        const markers = markerGroup.findAll(marker => {
+          return marker.get('name') === 'anchor-marker'
+        })
         if (name === 'show-anchor') {
           if (value) {
-            const bbox = group.get('children')[0].getBBox()
-            const anchorGroup = group.addGroup()
-            this.getAnchorPoints().forEach((point, index) => {
-              anchorGroup.addShape('circle', {
-                attrs: {
-                  stroke: '#1890FF',
-                  fill: '#fff',
-                  x: bbox.minX + bbox.width * point[0],
-                  y: bbox.minY + bbox.height * point[1],
-                  r: 3.5,
-                  lineAppendWidth: 12,
-                  cursor: 'crosshair',
-                  opacity: 1
-                },
-                index,
-                draggable: true,
-                name: 'anchor'
-              })
+            anchors.forEach(anchor => {
+              anchor.attr({ opacity: 1 })
             })
           } else {
-            const anchors = group.getLast().findAll(item => item)
             anchors.forEach(anchor => {
               anchor.attr({ opacity: 0 })
+            })
+          }
+        }
+        if (name === 'show-hotspots') {
+          const param = value.split(',')
+          const id = param[0]
+          const index = param[1]
+          const state = param[2]
+          if (state === 'inactive') {
+            markers.forEach(marker => {
+              marker.attr({ opacity: 0.25 })
+            })
+            if (id === node.get('id')) {
+              markers[index].attr({ opacity: 0 })
+            }
+          } else {
+            markers.forEach(marker => {
+              marker.attr({ opacity: 0 })
             })
           }
         }
@@ -266,7 +321,7 @@
         if (name === 'anchor-hover') {
           const index = value.split('-')[0]
           const state = value.split('-')[1]
-          const anchor = group.getLast().getChildByIndex(index)
+          const anchor = anchorGroup.getChildByIndex(index)
           if (state === 'hover') {
             anchor.attr({
               fill: '#1890FF'
@@ -274,6 +329,22 @@
           } else {
             anchor.attr({
               fill: '#fff'
+            })
+          }
+        }
+        if (name === 'hotspot-hover') {
+          const param = value.split('-')
+          const index = param[0]
+          const state = param[1]
+          const marker = markerGroup.getChildByIndex(index)
+          if (state === 'hover') {
+            marker.attr({
+              r: 14
+            })
+          }
+          if (state === 'leave') {
+            marker.attr({
+              r: 12
             })
           }
         }
@@ -312,35 +383,88 @@
           },
           name: 'processShape'
         })
+        const bbox = group.getBBox()
+        const anchorGroup = group.addGroup({
+          name: 'anchor-group',
+          zIndex: 2
+        })
+        const markerGroup = group.addGroup({
+          name: 'marker-group',
+          zIndex: 1
+        })
+        this.getAnchorPoints().forEach((point, index) => {
+          anchorGroup.addShape('circle', {
+            attrs: {
+              stroke: '#1890FF',
+              fill: '#fff',
+              x: bbox.minX + bbox.width * point[0],
+              y: bbox.minY + bbox.height * point[1],
+              r: 3.5,
+              lineAppendWidth: 12,
+              cursor: 'crosshair',
+              opacity: 1
+            },
+            index,
+            draggable: true,
+            name: 'anchor'
+          })
+          markerGroup.addShape('marker', {
+            attrs: {
+              x: bbox.minX + bbox.width * point[0],
+              y: bbox.minY + bbox.height * point[1],
+              r: 12,
+              symbol: 'circle',
+              fill: '#1890FF',
+              opacity: 0,
+              cursor: 'crosshair'
+            },
+            index,
+            name: 'anchor-marker'
+          })
+        })
         return shape
       },
       setState(name, value, node) {
         const group = node.getContainer()
+        group.sort()
+        const anchorGroup = group.find(g => {
+          return g.get('name') === 'anchor-group'
+        })
+        const markerGroup = group.find(g => {
+          return g.get('name') === 'marker-group'
+        })
+        const anchors = anchorGroup.findAll(anchor => {
+          return anchor.get('name') === 'anchor'
+        })
+        const markers = markerGroup.findAll(marker => {
+          return marker.get('name') === 'anchor-marker'
+        })
         if (name === 'show-anchor') {
           if (value) {
-            const bbox = group.get('children')[0].getBBox()
-            const anchorGroup = group.addGroup()
-            this.getAnchorPoints().forEach((point, index) => {
-              anchorGroup.addShape('circle', {
-                attrs: {
-                  stroke: '#1890FF',
-                  fill: '#fff',
-                  x: bbox.minX + bbox.width * point[0],
-                  y: bbox.minY + bbox.height * point[1],
-                  r: 3.5,
-                  lineAppendWidth: 12,
-                  cursor: 'crosshair',
-                  opacity: 1
-                },
-                index,
-                draggable: true,
-                name: 'anchor'
-              })
+            anchors.forEach(anchor => {
+              anchor.attr({ opacity: 1 })
             })
           } else {
-            const anchors = group.getLast().findAll(item => item)
             anchors.forEach(anchor => {
               anchor.attr({ opacity: 0 })
+            })
+          }
+        }
+        if (name === 'show-hotspots') {
+          const param = value.split(',')
+          const id = param[0]
+          const index = param[1]
+          const state = param[2]
+          if (state === 'inactive') {
+            markers.forEach(marker => {
+              marker.attr({ opacity: 0.25 })
+            })
+            if (id === node.get('id')) {
+              markers[index].attr({ opacity: 0 })
+            }
+          } else {
+            markers.forEach(marker => {
+              marker.attr({ opacity: 0 })
             })
           }
         }
@@ -363,7 +487,7 @@
         if (name === 'anchor-hover') {
           const index = value.split('-')[0]
           const state = value.split('-')[1]
-          const anchor = group.getLast().getChildByIndex(index)
+          const anchor = anchorGroup.getChildByIndex(index)
           if (state === 'hover') {
             anchor.attr({
               fill: '#1890FF'
@@ -371,6 +495,22 @@
           } else {
             anchor.attr({
               fill: '#fff'
+            })
+          }
+        }
+        if (name === 'hotspot-hover') {
+          const param = value.split('-')
+          const index = param[0]
+          const state = param[1]
+          const marker = markerGroup.getChildByIndex(index)
+          if (state === 'hover') {
+            marker.attr({
+              r: 14
+            })
+          }
+          if (state === 'leave') {
+            marker.attr({
+              r: 12
             })
           }
         }
@@ -412,35 +552,88 @@
           },
           name: 'decisionShape'
         })
+        const bbox = group.getBBox()
+        const anchorGroup = group.addGroup({
+          name: 'anchor-group',
+          zIndex: 2
+        })
+        const markerGroup = group.addGroup({
+          name: 'marker-group',
+          zIndex: 1
+        })
+        this.getAnchorPoints().forEach((point, index) => {
+          anchorGroup.addShape('circle', {
+            attrs: {
+              stroke: '#1890FF',
+              fill: '#fff',
+              x: bbox.minX + bbox.width * point[0],
+              y: bbox.minY + bbox.height * point[1],
+              r: 3.5,
+              lineAppendWidth: 12,
+              cursor: 'crosshair',
+              opacity: 1
+            },
+            index,
+            draggable: true,
+            name: 'anchor'
+          })
+          markerGroup.addShape('marker', {
+            attrs: {
+              x: bbox.minX + bbox.width * point[0],
+              y: bbox.minY + bbox.height * point[1],
+              r: 12,
+              symbol: 'circle',
+              fill: '#1890FF',
+              opacity: 0,
+              cursor: 'crosshair'
+            },
+            index,
+            name: 'anchor-marker'
+          })
+        })
         return shape
       },
       setState(name, value, node) {
         const group = node.getContainer()
+        group.sort()
+        const anchorGroup = group.find(g => {
+          return g.get('name') === 'anchor-group'
+        })
+        const markerGroup = group.find(g => {
+          return g.get('name') === 'marker-group'
+        })
+        const anchors = anchorGroup.findAll(anchor => {
+          return anchor.get('name') === 'anchor'
+        })
+        const markers = markerGroup.findAll(marker => {
+          return marker.get('name') === 'anchor-marker'
+        })
         if (name === 'show-anchor') {
           if (value) {
-            const bbox = group.get('children')[0].getBBox()
-            const anchorGroup = group.addGroup()
-            this.getAnchorPoints().forEach((point, index) => {
-              anchorGroup.addShape('circle', {
-                attrs: {
-                  stroke: '#1890FF',
-                  fill: '#fff',
-                  x: bbox.minX + bbox.width * point[0],
-                  y: bbox.minY + bbox.height * point[1],
-                  r: 3.5,
-                  lineAppendWidth: 12,
-                  cursor: 'crosshair',
-                  opacity: 1
-                },
-                index,
-                draggable: true,
-                name: 'anchor'
-              })
+            anchors.forEach(anchor => {
+              anchor.attr({ opacity: 1 })
             })
           } else {
-            const anchors = group.getLast().findAll(item => item)
             anchors.forEach(anchor => {
               anchor.attr({ opacity: 0 })
+            })
+          }
+        }
+        if (name === 'show-hotspots') {
+          const param = value.split(',')
+          const id = param[0]
+          const index = param[1]
+          const state = param[2]
+          if (state === 'inactive') {
+            markers.forEach(marker => {
+              marker.attr({ opacity: 0.25 })
+            })
+            if (id === node.get('id')) {
+              markers[index].attr({ opacity: 0 })
+            }
+          } else {
+            markers.forEach(marker => {
+              marker.attr({ opacity: 0 })
             })
           }
         }
@@ -463,7 +656,7 @@
         if (name === 'anchor-hover') {
           const index = value.split('-')[0]
           const state = value.split('-')[1]
-          const anchor = group.getLast().getChildByIndex(index)
+          const anchor = anchorGroup.getChildByIndex(index)
           if (state === 'hover') {
             anchor.attr({
               fill: '#1890FF'
@@ -471,6 +664,22 @@
           } else {
             anchor.attr({
               fill: '#fff'
+            })
+          }
+        }
+        if (name === 'hotspot-hover') {
+          const param = value.split('-')
+          const index = param[0]
+          const state = param[1]
+          const marker = markerGroup.getChildByIndex(index)
+          if (state === 'hover') {
+            marker.attr({
+              r: 14
+            })
+          }
+          if (state === 'leave') {
+            marker.attr({
+              r: 12
             })
           }
         }
@@ -512,35 +721,88 @@
           },
           name: 'ioShape'
         })
+        const bbox = group.getBBox()
+        const anchorGroup = group.addGroup({
+          name: 'anchor-group',
+          zIndex: 2
+        })
+        const markerGroup = group.addGroup({
+          name: 'marker-group',
+          zIndex: 1
+        })
+        this.getAnchorPoints().forEach((point, index) => {
+          anchorGroup.addShape('circle', {
+            attrs: {
+              stroke: '#1890FF',
+              fill: '#fff',
+              x: bbox.minX + bbox.width * point[0],
+              y: bbox.minY + bbox.height * point[1],
+              r: 3.5,
+              lineAppendWidth: 12,
+              cursor: 'crosshair',
+              opacity: 1
+            },
+            index,
+            draggable: true,
+            name: 'anchor'
+          })
+          markerGroup.addShape('marker', {
+            attrs: {
+              x: bbox.minX + bbox.width * point[0],
+              y: bbox.minY + bbox.height * point[1],
+              r: 12,
+              symbol: 'circle',
+              fill: '#1890FF',
+              opacity: 0,
+              cursor: 'crosshair'
+            },
+            index,
+            name: 'anchor-marker'
+          })
+        })
         return shape
       },
       setState(name, value, node) {
         const group = node.getContainer()
+        group.sort()
+        const anchorGroup = group.find(g => {
+          return g.get('name') === 'anchor-group'
+        })
+        const markerGroup = group.find(g => {
+          return g.get('name') === 'marker-group'
+        })
+        const anchors = anchorGroup.findAll(anchor => {
+          return anchor.get('name') === 'anchor'
+        })
+        const markers = markerGroup.findAll(marker => {
+          return marker.get('name') === 'anchor-marker'
+        })
         if (name === 'show-anchor') {
           if (value) {
-            const bbox = group.get('children')[0].getBBox()
-            const anchorGroup = group.addGroup()
-            this.getAnchorPoints().forEach((point, index) => {
-              anchorGroup.addShape('circle', {
-                attrs: {
-                  stroke: '#1890FF',
-                  fill: '#fff',
-                  x: bbox.minX + bbox.width * point[0],
-                  y: bbox.minY + bbox.height * point[1],
-                  r: 3.5,
-                  lineAppendWidth: 12,
-                  cursor: 'crosshair',
-                  opacity: 1
-                },
-                index,
-                draggable: true,
-                name: 'anchor'
-              })
+            anchors.forEach(anchor => {
+              anchor.attr({ opacity: 1 })
             })
           } else {
-            const anchors = group.getLast().findAll(item => item)
             anchors.forEach(anchor => {
               anchor.attr({ opacity: 0 })
+            })
+          }
+        }
+        if (name === 'show-hotspots') {
+          const param = value.split(',')
+          const id = param[0]
+          const index = param[1]
+          const state = param[2]
+          if (state === 'inactive') {
+            markers.forEach(marker => {
+              marker.attr({ opacity: 0.25 })
+            })
+            if (id === node.get('id')) {
+              markers[index].attr({ opacity: 0 })
+            }
+          } else {
+            markers.forEach(marker => {
+              marker.attr({ opacity: 0 })
             })
           }
         }
@@ -563,7 +825,7 @@
         if (name === 'anchor-hover') {
           const index = value.split('-')[0]
           const state = value.split('-')[1]
-          const anchor = group.getLast().getChildByIndex(index)
+          const anchor = anchorGroup.getChildByIndex(index)
           if (state === 'hover') {
             anchor.attr({
               fill: '#1890FF'
@@ -571,6 +833,22 @@
           } else {
             anchor.attr({
               fill: '#fff'
+            })
+          }
+        }
+        if (name === 'hotspot-hover') {
+          const param = value.split('-')
+          const index = param[0]
+          const state = param[1]
+          const marker = markerGroup.getChildByIndex(index)
+          if (state === 'hover') {
+            marker.attr({
+              r: 14
+            })
+          }
+          if (state === 'leave') {
+            marker.attr({
+              r: 12
             })
           }
         }
@@ -609,35 +887,88 @@
           },
           name: 'terminalShape'
         })
+        const bbox = group.getBBox()
+        const anchorGroup = group.addGroup({
+          name: 'anchor-group',
+          zIndex: 2
+        })
+        const markerGroup = group.addGroup({
+          name: 'marker-group',
+          zIndex: 1
+        })
+        this.getAnchorPoints().forEach((point, index) => {
+          anchorGroup.addShape('circle', {
+            attrs: {
+              stroke: '#1890FF',
+              fill: '#fff',
+              x: bbox.minX + bbox.width * point[0],
+              y: bbox.minY + bbox.height * point[1],
+              r: 3.5,
+              lineAppendWidth: 12,
+              cursor: 'crosshair',
+              opacity: 1
+            },
+            index,
+            draggable: true,
+            name: 'anchor'
+          })
+          markerGroup.addShape('marker', {
+            attrs: {
+              x: bbox.minX + bbox.width * point[0],
+              y: bbox.minY + bbox.height * point[1],
+              r: 12,
+              symbol: 'circle',
+              fill: '#1890FF',
+              opacity: 0,
+              cursor: 'crosshair'
+            },
+            index,
+            name: 'anchor-marker'
+          })
+        })
         return shape
       },
       setState(name, value, node) {
         const group = node.getContainer()
+        group.sort()
+        const anchorGroup = group.find(g => {
+          return g.get('name') === 'anchor-group'
+        })
+        const markerGroup = group.find(g => {
+          return g.get('name') === 'marker-group'
+        })
+        const anchors = anchorGroup.findAll(anchor => {
+          return anchor.get('name') === 'anchor'
+        })
+        const markers = markerGroup.findAll(marker => {
+          return marker.get('name') === 'anchor-marker'
+        })
         if (name === 'show-anchor') {
           if (value) {
-            const bbox = group.get('children')[0].getBBox()
-            const anchorGroup = group.addGroup()
-            this.getAnchorPoints().forEach((point, index) => {
-              anchorGroup.addShape('circle', {
-                attrs: {
-                  stroke: '#1890FF',
-                  fill: '#fff',
-                  x: bbox.minX + bbox.width * point[0],
-                  y: bbox.minY + bbox.height * point[1],
-                  r: 3.5,
-                  lineAppendWidth: 12,
-                  cursor: 'crosshair',
-                  opacity: 1
-                },
-                index,
-                draggable: true,
-                name: 'anchor'
-              })
+            anchors.forEach(anchor => {
+              anchor.attr({ opacity: 1 })
             })
           } else {
-            const anchors = group.getLast().findAll(item => item)
             anchors.forEach(anchor => {
               anchor.attr({ opacity: 0 })
+            })
+          }
+        }
+        if (name === 'show-hotspots') {
+          const param = value.split(',')
+          const id = param[0]
+          const index = param[1]
+          const state = param[2]
+          if (state === 'inactive') {
+            markers.forEach(marker => {
+              marker.attr({ opacity: 0.25 })
+            })
+            if (id === node.get('id')) {
+              markers[index].attr({ opacity: 0 })
+            }
+          } else {
+            markers.forEach(marker => {
+              marker.attr({ opacity: 0 })
             })
           }
         }
@@ -660,7 +991,7 @@
         if (name === 'anchor-hover') {
           const index = value.split('-')[0]
           const state = value.split('-')[1]
-          const anchor = group.getLast().getChildByIndex(index)
+          const anchor = anchorGroup.getChildByIndex(index)
           if (state === 'hover') {
             anchor.attr({
               fill: '#1890FF'
@@ -668,6 +999,22 @@
           } else {
             anchor.attr({
               fill: '#fff'
+            })
+          }
+        }
+        if (name === 'hotspot-hover') {
+          const param = value.split('-')
+          const index = param[0]
+          const state = param[1]
+          const marker = markerGroup.getChildByIndex(index)
+          if (state === 'hover') {
+            marker.attr({
+              r: 14
+            })
+          }
+          if (state === 'leave') {
+            marker.attr({
+              r: 12
             })
           }
         }
@@ -1475,6 +1822,7 @@
           }
           const delegateShape = graph.findById('delegateShape')
           item.updatePosition(cfg)
+          graph.updateItem(item, {})
           graph.removeItem(delegateShape)
         }
       }
@@ -1484,7 +1832,10 @@
         return {
           'node:dragstart': 'onDragStart',
           'node:drag': 'onDrag',
-          'node:dragend': 'onDragEnd'
+          'node:dragend': 'onDragEnd',
+          'node:dragenter': 'onDragEnter',
+          'node:dragleave': 'onDragLeave',
+          'node:drop': 'onDrop'
         }
       },
       onDragStart(e) {
@@ -1492,18 +1843,30 @@
         const graph = self.graph
         const group = graph.get('group')
         if (e.target.get('name') === 'anchor') {
-          const { canvasX: x, canvasY: y } = e
+          const { canvasX: x, canvasY: y, item } = e
           group.addShape('path', {
             attrs: {
               path: [
                 ['M', x, y],
                 ['L', x, y]
               ],
+
               stroke: '#1890FF',
               lineWidth: 1,
               lineDash: [4, 4]
             },
             id: 'delegate-edge'
+          })
+          const index = e.target.get('index')
+          const id = item.get('id')
+          graph.set('sourceNode', {
+            item,
+            sourceAnchor: index
+          })
+          const nodes = graph.getNodes()
+          nodes.forEach(node => {
+            node.setState('show-anchor', true)
+            node.setState('show-hotspots', `${id},${index},inactive`)
           })
         }
       },
@@ -1512,6 +1875,7 @@
         const graph = self.graph
         const group = graph.get('group')
         const delegateEdge = group.findById('delegate-edge')
+
         if (e.target.get('name') === 'anchor') {
           const { canvasX: x, canvasY: y, item } = e
           const index = e.target.get('index')
@@ -1548,8 +1912,101 @@
         const group = graph.get('group')
         const delegateEdge = group.findById('delegate-edge')
         if (e.target.get('name') === 'anchor') {
+          const { item } = e
+          const nodes = graph.getNodes()
+          if (item.hasState('selected')) {
+            graph.clearItemStates(item, 'selected')
+          }
+          group.removeChild(delegateEdge)
+          nodes.forEach(node => {
+            node.setState('show-anchor', false)
+            node.setState('show-hotspots', 'all,all,clear')
+          })
+        }
+      },
+      onDragEnter(e) {
+        const self = this
+        const graph = self.graph
+        const group = graph.get('group')
+        const delegateEdge = group.findById('delegate-edge')
+        const index = e.target.get('index')
+        const { item } = e
+        if (e.target.get('name') === 'anchor-marker' || e.target.get('name') === 'anchor') {
+          if (delegateEdge) {
+            delegateEdge.set('zIndex', -1)
+            group.sort()
+          }
+          item.setState('hotspot-hover', `${index}-hover`)
+        }
+      },
+      onDragLeave(e) {
+        const index = e.target.get('index')
+        const self = this
+        const graph = self.graph
+        const group = graph.get('group')
+        const delegateEdge = group.findById('delegate-edge')
+        const { item } = e
+        if (e.target.get('name') === 'anchor-marker') {
+          if (delegateEdge) {
+            delegateEdge.set('zIndex', 1)
+            group.sort()
+          }
+          item.setState('hotspot-hover', `${index}-leave`)
+        }
+      },
+      onDrop(e) {
+        const targetAnchor = e.target.get('index')
+        const self = this
+        const graph = self.graph
+        const group = graph.get('group')
+        const { item: target } = e
+        const { item: source, sourceAnchor } = graph.get('sourceNode')
+        const delegateEdge = group.findById('delegate-edge')
+        if (delegateEdge) {
           group.removeChild(delegateEdge)
         }
+
+        let curvePosition = [1 / 2, 1 / 2]
+        let curveOffset = [-20, 20]
+        let edgeType = 'cubic'
+        if (sourceAnchor === 0 && targetAnchor === 0) {
+          edgeType = 'cubic'
+          curvePosition = [1 / 2, 1 / 2]
+          curveOffset = [-20, 20]
+        }
+        if (sourceAnchor === 1 && targetAnchor === 3) {
+          edgeType = 'cubic'
+        }
+        if (sourceAnchor === 2 && targetAnchor === 0) {
+          edgeType = 'cubic'
+        }
+        if (sourceAnchor === 3 && targetAnchor === 1) {
+          edgeType = 'cubic'
+        }
+        const timestamp = new Date().getTime()
+        const id = `line-${timestamp}`
+        graph.addItem('edge', {
+          id,
+          type: edgeType,
+          source,
+          target,
+          sourceAnchor,
+          targetAnchor,
+          curvePosition,
+          curveOffset,
+          style: {
+            stroke: '#A3B1BF',
+            lineWidth: 1,
+            lineAppendWidth: 4,
+            endArrow: {
+              path: G6.Arrow.triangle(6, 8, 0),
+              d: 0,
+              fill: '#A3B1BF',
+            }
+          },
+        })
+        const edgeGroup = graph.get('edgeGroup')
+        edgeGroup.toFront()
       }
     })
     function updateNode(input, target) {
@@ -1558,7 +2015,6 @@
         target.update({
           label
         })
-        console.log(target)
       })
     }
     function setDetailPanel(item) {

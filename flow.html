@@ -87,21 +87,26 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-bottom: 24px;
     }
 
     .property .row .label {
       text-align: right;
       margin-right: 8px;
+      width: 33.3%;
     }
 
     .property .row .input {
       font-variant: tabular-nums;
-      width: 100%;
+      width: 66.6%;
       padding: 4px 11px;
       border: 1px solid #d9d9d9;
       border-radius: 2px;
       line-height: 1.5715;
       color: rgba(0, 0, 0, .85);
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
     }
 
     .property .row .input:focus {
@@ -112,6 +117,10 @@
 
     .property .row .input:hover {
       border-color: #40a9ff;
+    }
+
+    .property .row option {
+      padding: 5px 12px;
     }
 
     .property .row .label::after {
@@ -1041,7 +1050,7 @@
         return {
           'node:click': 'onNodeClick',
           'canvas:click': 'onCanvasClick',
-          'edge:click': 'OnEdgeClick'
+          'edge:click': 'onEdgeClick'
         }
       },
       onNodeClick(e) {
@@ -1065,6 +1074,7 @@
         const self = this
         const graph = self.graph
         const nodes = graph.getNodes()
+        const edges = graph.getEdges()
         nodes.forEach(node => {
           if (node.hasState('selected')) {
             graph.clearItemStates(node, 'selected')
@@ -1073,10 +1083,39 @@
             graph.clearItemStates(node, 'show-anchor')
           }
         })
+        const edgeCfg = {
+          style: {
+            lineWidth: 1
+          }
+        }
+        edges.forEach(edge => {
+          if (edge.hasState('selected')) {
+            graph.clearItemStates(edge, 'selected')
+            graph.updateItem(edge, edgeCfg)
+          }
+        })
         setDetailPanel('canvas')
       },
-      OnEdgeClick(e) {
-        console.log(e)
+      onEdgeClick(e) {
+        const self = this
+        const graph = self.graph
+        const { item } = e
+        if (!item.hasState('selected')) {
+          item.setState('selected', true)
+          const cfg = {
+            style: {
+              stroke: '#A3B1BF',
+              lineWidth: 2,
+              endArrow: {
+                path: G6.Arrow.triangle(6, 8, 0),
+                d: 0,
+                fill: '#A3B1BF'
+              }
+            }
+          }
+          graph.updateItem(item, cfg)
+          setDetailPanel(item)
+        }
       }
     })
     G6.registerBehavior('hoverNodeActived', {
@@ -2024,55 +2063,112 @@
         const self = this
         const graph = self.graph
         const { item } = e
-        const cfg = {
-          style: {
-            stroke: '#1890FF',
-            endArrow: {
-              path: G6.Arrow.triangle(6, 8, 0),
-              d: 0,
-              fill: '#1890FF'
+        if (!item.hasState('selected')) {
+          const cfg = {
+            style: {
+              stroke: '#1890FF',
+              endArrow: {
+                path: G6.Arrow.triangle(6, 8, 0),
+                d: 0,
+                fill: '#1890FF'
+              }
             }
           }
+          graph.updateItem(item, cfg)
         }
-        graph.updateItem(item, cfg)
       },
       onMouseLeave(e) {
         const self = this
         const graph = self.graph
         const { item } = e
-        const cfg = {
-          style: {
-            stroke: '#A3B1BF',
-            endArrow: {
-              path: G6.Arrow.triangle(6, 8, 0),
-              d: 0,
-              fill: '#A3B1BF'
+        if (!item.hasState('selected')) {
+          const cfg = {
+            style: {
+              stroke: '#A3B1BF',
+              endArrow: {
+                path: G6.Arrow.triangle(6, 8, 0),
+                d: 0,
+                fill: '#A3B1BF'
+              }
             }
           }
+          graph.updateItem(item, cfg)
         }
-        graph.updateItem(item, cfg)
       }
     })
-    function updateNode(input, target) {
-      input.addEventListener('change', e => {
-        const label = e.target.value
-        target.update({
-          label
+    function updateItem(element, type, target) {
+      if (type === 'label') {
+        element.addEventListener('change', e => {
+          const label = e.target.value
+          target.update({
+            label
+          })
         })
-      })
+      }
+
+      if (type === 'shape') {
+        element.addEventListener('change', e => {
+          const { value } = e.target
+          let type
+          let radius = 0
+          if (value === 'Smooth') {
+            type = 'cubic'
+          }
+          if (value === 'Polyline') {
+            type = 'polyline'
+          }
+          if (value === 'Polyline Round') {
+            type = 'polyline'
+            radius = 5
+          }
+          // 由于未使用 state，style 更新则会覆盖原有的 style，已有属性需要重新指定
+          target.update({
+            type,
+            style: {
+              stroke: '#A3B1BF',
+              lineWidth: 2,
+              endArrow: {
+                path: G6.Arrow.triangle(6, 8, 0),
+                d: 0,
+                fill: '#A3B1BF'
+              },
+              radius,
+              offset: 14
+            }
+          })
+        })
+      }
     }
     function setDetailPanel(item) {
       const detailPanelTitle = document.querySelector('#property-title')
       const propertyContainer = document.querySelector('.property')
-      const row = document.createElement('div')
-      row.className = 'row'
-      const label = document.createElement('div')
-      label.innerHTML = 'Label'
-      label.className = 'label'
-      row.appendChild(label)
-      const input = document.createElement('input')
-      input.className = 'input'
-      row.appendChild(input)
+
+      const labelRow = document.createElement('div')
+      labelRow.className = 'row'
+      const labelLabel = document.createElement('div')
+      labelLabel.innerHTML = 'Label'
+      labelLabel.className = 'label'
+      labelRow.appendChild(labelLabel)
+      const labelInput = document.createElement('input')
+      labelInput.className = 'input'
+      labelRow.appendChild(labelInput)
+
+      const shapeRow = document.createElement('div')
+      shapeRow.className = 'row'
+      const shapeLabel = document.createElement('div')
+      shapeLabel.innerHTML = 'Shape'
+      shapeLabel.className = 'label'
+      shapeRow.appendChild(shapeLabel)
+      const shapeSelect = document.createElement('select')
+      shapeSelect.className = 'input'
+      shapeRow.appendChild(shapeSelect)
+      const shapeOptions = ['Smooth', 'Polyline', 'Polyline Round']
+      shapeOptions.forEach((option, index) => {
+        const op = document.createElement('option')
+        op.value = option
+        op.text = option
+        shapeSelect.appendChild(op)
+      })
       if (item === 'canvas') {
         detailPanelTitle.innerHTML = 'Canvas'
         if (propertyContainer.children.length) {
@@ -2083,9 +2179,33 @@
           const { label } = item.getModel()
           detailPanelTitle.innerHTML = 'Node'
           propertyContainer.innerHTML = ''
-          propertyContainer.appendChild(row)
-          input.value = label
-          updateNode(input, item)
+          propertyContainer.appendChild(labelRow)
+          labelInput.value = label
+          updateItem(labelInput, item)
+        }
+        if (item.getType() === 'edge') {
+          let { label, type, style } = item.getModel()
+          if (!label) {
+            label = ''
+          }
+          labelInput.value = label
+          let shape
+          if (type === 'cubic') {
+            shape = 'Smooth'
+          }
+          if (type === 'polyline') {
+            shape = 'Polyline'
+            if (style.radius > 0) {
+              shape = 'Polyline Round'
+            }
+          }
+          shapeSelect.value = shape
+          propertyContainer.innerHTML = ''
+          detailPanelTitle.innerHTML = 'Edge'
+          propertyContainer.appendChild(labelRow)
+          propertyContainer.appendChild(shapeRow)
+          updateItem(labelInput, 'label', item)
+          updateItem(shapeSelect, 'shape', item)
         }
       }
     }

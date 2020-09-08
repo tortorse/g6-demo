@@ -2115,7 +2115,15 @@
         element.addEventListener('change', e => {
           const label = e.target.value
           target.update({
-            label
+            label,
+            labelCfg: {
+              style: {
+                background: {
+                  fill: '#ffffff',
+                  padding: [2, 2, 2, 2],
+                }
+              }
+            }
           })
         })
       }

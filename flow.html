@@ -1069,6 +1069,18 @@
           setDetailPanel(item)
         }
         item.setState('show-anchor', true)
+        const edges = graph.getEdges()
+        const edgeCfg = {
+          style: {
+            lineWidth: 1
+          }
+        }
+        edges.forEach(edge => {
+          if (edge.hasState('selected')) {
+            graph.clearItemStates(edge, 'selected')
+            graph.updateItem(edge, edgeCfg)
+          }
+        })
       },
       onCanvasClick(e) {
         const self = this
@@ -1100,6 +1112,18 @@
         const self = this
         const graph = self.graph
         const { item } = e
+        const selectedEdges = graph.findAllByState('edge', 'selected')
+        if (selectedEdges.length) {
+          selectedEdges.forEach(edge => {
+            graph.clearItemStates(edge, 'selected')
+            const edgeCfg = {
+              style: {
+                lineWidth: 1
+              }
+            }
+            graph.updateItem(edge, edgeCfg)
+          })
+        }
         if (!item.hasState('selected')) {
           item.setState('selected', true)
           const cfg = {
@@ -1115,6 +1139,15 @@
           }
           graph.updateItem(item, cfg)
           setDetailPanel(item)
+          const nodes = graph.getNodes()
+          nodes.forEach(node => {
+            if (node.hasState('selected')) {
+              graph.clearItemStates(node, 'selected')
+            }
+            if (node.hasState('show-anchor')) {
+              graph.clearItemStates(node, 'show-anchor')
+            }
+          })
         }
       }
     })
@@ -2026,20 +2059,6 @@
         let curvePosition = [1 / 2, 1 / 2]
         let curveOffset = [-20, 20]
         let edgeType = 'cubic'
-        if (sourceAnchor === 0 && targetAnchor === 0) {
-          edgeType = 'cubic'
-          curvePosition = [1 / 2, 1 / 2]
-          curveOffset = [-20, 20]
-        }
-        if (sourceAnchor === 1 && targetAnchor === 3) {
-          edgeType = 'cubic'
-        }
-        if (sourceAnchor === 2 && targetAnchor === 0) {
-          edgeType = 'cubic'
-        }
-        if (sourceAnchor === 3 && targetAnchor === 1) {
-          edgeType = 'cubic'
-        }
         const timestamp = new Date().getTime()
         const id = `line-${timestamp}`
         graph.addItem('edge', {
@@ -2107,6 +2126,29 @@
             }
           }
           graph.updateItem(item, cfg)
+        }
+      }
+    })
+    G6.registerBehavior('deleteItem', {
+      getEvents() {
+        return {
+          'keydown': 'onKeydown'
+        }
+      },
+      onKeydown(e) {
+        const self = this
+        const graph = self.graph
+        const nodes = graph.findAllByState('node', 'selected')
+        const edges = graph.findAllByState('edge', 'selected')
+        const { keyCode } = e
+        if (keyCode === 46) {
+          // 先删除edge，因为删除 node 的同时， edge 也不复存在，无法再次删除
+          edges.forEach((edge) => {
+            graph.removeItem(edge, true)
+          })
+          nodes.forEach((node) => {
+            graph.removeItem(node, true)
+          })
         }
       }
     })
@@ -2250,7 +2292,8 @@
           'hoverNodeActived',
           'clickSelected',
           'dragPoint',
-          'hoverEdgeActived'
+          'hoverEdgeActived',
+          'deleteItem'
         ]
       },
       plugins: [minimap]

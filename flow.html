@@ -130,6 +130,50 @@
     .canvas {
       flex: 1;
       box-shadow: -1px 0 0 inset rgba(0, 0, 0, 0.08);
+      position: relative;
+    }
+
+    .context-menu-container {
+      overflow: hidden;
+      background: #fff;
+      border-radius: 4px;
+      box-shadow: 0 3px 6px -4px rgba(0, 0, 0, .12), 0 6px 16px 0 rgba(0, 0, 0, .08), 0 9px 28px 8px rgba(0, 0, 0, .05);
+    }
+
+    .context-menu {
+      margin: 0;
+      padding: 0;
+    }
+
+    .context-menu li {
+      list-style: none;
+      color: rgba(0, 0, 0, .65);
+      padding: 5px 12px;
+    }
+
+    .context-menu li.disabled {
+      color: rgba(0, 0, 0, .25)
+    }
+
+    .context-menu li span {
+      cursor: default;
+    }
+
+    .context-menu li span:not(:last-child) {
+      margin-right: 8px;
+    }
+
+    .context-menu li:hover {
+      background: #f5f5f5;
+    }
+
+    .context-menu li svg {
+      width: 14px;
+      fill: rgba(0, 0, 0, .65)
+    }
+
+    .context-menu li.disabled svg {
+      fill: rgba(0, 0, 0, .25)
     }
   </style>
 </head>
@@ -197,6 +241,14 @@
         graph.set('addModel', null);
       })
     })
+
+    // context menu dom
+    const canvas = document.querySelector('#canvas')
+    const menuContainer = document.createElement('div')
+    menuContainer.setAttribute('style', 'position: absolute;display:none')
+    menuContainer.className = 'context-menu-container'
+    canvas.appendChild(menuContainer)
+
     const nodeStyle = {
       shadowOffsetX: 0,
       shadowOffsetY: 4,
@@ -1228,9 +1280,6 @@
       }
     })
     G6.registerBehavior('dragPanelItemAddNode', {
-      getDefaultCfg() {
-        return {}
-      },
       getEvents() {
         return {
           'canvas:mousemove': 'onMouseMove',
@@ -1899,6 +1948,11 @@
           const delegateShape = graph.findById('delegateShape')
           item.updatePosition(cfg)
           graph.updateItem(item, {})
+
+          const selectedNodes = graph.findAllByState('node', 'selected')
+          selectedNodes.forEach(node => {
+            graph.clearItemStates(node, 'selected')
+          })
           graph.setItemState(item, 'selected', true)
           graph.setItemState(item, 'show-anchor', true)
           graph.removeItem(delegateShape)
@@ -2152,6 +2206,66 @@
         }
       }
     })
+    G6.registerBehavior('contextMenu', {
+      getEvents() {
+        return {
+          'canvas:contextmenu': 'onCanvasContextMenu',
+          'canvas:click': 'onCanvasClick'
+        }
+      },
+      onCanvasContextMenu(e) {
+        e.preventDefault()
+        e.stopPropagation()
+        const { canvasX, canvasY } = e
+        const canvasMenu = `
+          <ul class="context-menu" data-status="canvas-selected">
+            <li class="menu" data-command="undo"><span role="img"><svg id="icon-undo" viewBox="0 0 1024 1024"><path d="M143.14 449.19q69.07-89.09 170.67-140.64Q415.41 257 537.52 256q183.18 4 315.81 114.11T1024 654.39q-58.06-107.11-161.66-170.17-103.6-63.06-232.73-65.06-107.1 1-196.69 45.54-89.58 44.55-152.65 121.62L407.4 713.45q7 7 7 17.01 0 10.01-7 17.02t-17.01 7.01H32.04q-14.01 0-23.02-9.01T0.01 722.46V364.11q0-10.01 7-17.02t17.02-7.01q10.01 0 17.02 7.01l102.1 102.1z"></path></svg></span><span>Undo</span></li>
+            <li class="menu" data-command="redo"><span role="img"><svg id="icon-redo" viewBox="0 0 1024 1024"><path d="M999.98 340.08q-10.01 0-17.02 7.01l-102.1 102.1q-69.07-89.09-170.67-140.64Q608.59 257 487.48 256q-184.18 4-316.81 114.11T0 654.39q58.06-107.11 161.66-170.17 103.6-63.06 232.73-65.06 107.1 1 197.19 45.54 90.09 44.55 152.15 121.62L616.6 713.45q-7 7-7 17.01 0 10.01 7 17.02t17.01 7.01h358.35q14.01 0 23.02-9.01t9.01-23.02V364.11q0-10.01-7-17.02t-17.01-7.01z"></path></svg></span><span>Redo</span></li>
+            <li class="menu" data-command="pasteHere"><span role="img"><svg id="icon-paste" viewBox="0 0 1024 1024"><path d="M795.99 199.33h-75.02v-62.16h109.31q10.72 0 19.3 8.58 8.57 8.57 8.57 19.29v102.88h-62.16v-68.59zM240.87 898.05h-75.02V199.33h75.02v-62.16H131.56q-10.72 0-19.29 8.58-8.57 8.57-8.57 19.29v760.88q0 10.71 8.57 18.75t19.29 9.11h102.88l6.43-55.73z m411.52-623.7H309.46V137.17h68.58V62.16q1.07-26.8 18.22-43.94Q413.41 1.08 440.2 0.01h75.01q26.8 1.07 43.94 18.21 17.14 17.14 18.22 43.94v75.01h75.02v137.18zM515.21 62.16H440.2v75.01h75.01V62.16z m405.09 938.77V548.69L720.97 342.93H343.75q-16.08 0-25.19 8.57-9.11 8.57-9.11 19.3v623.7q0 10.72 8.57 18.76 8.57 8.04 19.29 9.11H886q15 4.28 24.11-2.68 9.11-6.97 10.18-18.76z m-68.58-438.31H714.54v-151.1l137.18 151.1z m6.43 411.52H371.61V411.52h280.78v212.19h205.76v350.43z"></path></svg></span><span>Paste Here</span></li>
+          </ul>
+        `
+        menuContainer.innerHTML = canvasMenu
+        menuContainer.setAttribute('style', `position:absolute;left:${canvasX + 6}px;top:${canvasY + 6}px`)
+        const menu = document.querySelector('.context-menu')
+        const undoStack = graph.getUndoStack()
+        const redoStack = graph.getRedoStack()
+        const undoMenu = document.querySelector('li[data-command="undo"]')
+        const redoMenu = document.querySelector('li[data-command="redo"]')
+        const pasteHereMenu = document.querySelector('li[data-command="pasteHere"]')
+        let item
+        if (undoStack.length < 2) {
+          undoMenu.classList.add('disabled')
+        }
+        if (redoStack.length < 1) {
+          redoMenu.classList.add('disabled')
+        }
+        menu.addEventListener('click', e => {
+          if (e.target.matches('span')) {
+            item = e.target.parentElement
+          }
+          if (e.target.matches('li')) {
+            item = e.target
+          }
+          if (e.target.matches('svg')) {
+            item = e.target.parentElement.parentElement
+          }
+          if (e.target.matches('path')) {
+            item = e.target.parentElement.parentElement.parentElement
+          }
+          const { command } = item.dataset
+          switch(command) {
+            case 'undo':
+            if (undoStack.length > 1) {
+              console.log('command undo')
+            }
+            break
+          }
+        })
+      },
+      onCanvasClick(e) {
+        menuContainer.setAttribute('style', `display:none`)
+      }
+    })
     function updateItem(element, type, target) {
       if (type === 'label') {
         element.addEventListener('change', e => {
@@ -2274,7 +2388,7 @@
       }
     }
     const graph = new G6.Graph({
-      container: 'canvas',
+      container: canvas,
       width: container.clientWidth - 480,
       height: container.clientHeight,
       modes: {
@@ -2293,10 +2407,12 @@
           'clickSelected',
           'dragPoint',
           'hoverEdgeActived',
-          'deleteItem'
+          'deleteItem',
+          'contextMenu'
         ]
       },
-      plugins: [minimap]
+      plugins: [minimap],
+      enabledStack: true
     })
 
     graph.setMode('edit')

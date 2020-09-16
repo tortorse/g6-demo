@@ -212,13 +212,13 @@
       </div>
     </div>
   </div>
-  <script src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.6.1/dist/g6.min.js"></script>
+  <!-- <script src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.6.1/dist/g6.min.js"></script> -->
+  <script src="https://gw.alipayobjects.com/os/lib/antv/g6/3.7.2/dist/g6.min.js"></script>
   <script>
     const container = document.querySelector('.container')
     const items = document.querySelectorAll('.items .item')
     const img = new Image()
     img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
-
     items.forEach(item => {
       const { type, width, height, label } = item.dataset
       const addModel = {
@@ -1130,7 +1130,7 @@
         edges.forEach(edge => {
           if (edge.hasState('selected')) {
             graph.clearItemStates(edge, 'selected')
-            graph.updateItem(edge, edgeCfg)
+            graph.updateItem(edge, edgeCfg, false)
           }
         })
       },
@@ -1155,7 +1155,7 @@
         edges.forEach(edge => {
           if (edge.hasState('selected')) {
             graph.clearItemStates(edge, 'selected')
-            graph.updateItem(edge, edgeCfg)
+            graph.updateItem(edge, edgeCfg, false)
           }
         })
         setDetailPanel('canvas')
@@ -1173,7 +1173,7 @@
                 lineWidth: 1
               }
             }
-            graph.updateItem(edge, edgeCfg)
+            graph.updateItem(edge, edgeCfg, false)
           })
         }
         if (!item.hasState('selected')) {
@@ -1189,7 +1189,7 @@
               }
             }
           }
-          graph.updateItem(item, cfg)
+          graph.updateItem(item, cfg, false)
           setDetailPanel(item)
           const nodes = graph.getNodes()
           nodes.forEach(node => {
@@ -2134,7 +2134,7 @@
               fill: '#A3B1BF',
             }
           },
-        })
+        }, true)
         const edgeGroup = graph.get('edgeGroup')
         edgeGroup.toFront()
       }
@@ -2161,7 +2161,7 @@
               }
             }
           }
-          graph.updateItem(item, cfg)
+          graph.updateItem(item, cfg, false)
         }
       },
       onMouseLeave(e) {
@@ -2179,7 +2179,7 @@
               }
             }
           }
-          graph.updateItem(item, cfg)
+          graph.updateItem(item, cfg, false)
         }
       }
     })
@@ -2198,10 +2198,12 @@
         if (keyCode === 46) {
           // 先删除edge，因为删除 node 的同时， edge 也不复存在，无法再次删除
           edges.forEach((edge) => {
-            graph.removeItem(edge, true)
+            // 不使用 removeItem issue: https://github.com/antvis/G6/issues/2096
+            graph.hideItem(edge, true)
           })
           nodes.forEach((node) => {
-            graph.removeItem(node, true)
+            // 不使用 removeItem issue: https://github.com/antvis/G6/issues/2096
+            graph.hideItem(node, true)
           })
         }
       }
@@ -2210,35 +2212,35 @@
       getEvents() {
         return {
           'canvas:contextmenu': 'onCanvasContextMenu',
-          'canvas:click': 'onCanvasClick'
+          'canvas:click': 'onCanvasClick',
         }
       },
       onCanvasContextMenu(e) {
         e.preventDefault()
         e.stopPropagation()
         const { canvasX, canvasY } = e
-        const canvasMenu = `
-          <ul class="context-menu" data-status="canvas-selected">
-            <li class="menu" data-command="undo"><span role="img"><svg id="icon-undo" viewBox="0 0 1024 1024"><path d="M143.14 449.19q69.07-89.09 170.67-140.64Q415.41 257 537.52 256q183.18 4 315.81 114.11T1024 654.39q-58.06-107.11-161.66-170.17-103.6-63.06-232.73-65.06-107.1 1-196.69 45.54-89.58 44.55-152.65 121.62L407.4 713.45q7 7 7 17.01 0 10.01-7 17.02t-17.01 7.01H32.04q-14.01 0-23.02-9.01T0.01 722.46V364.11q0-10.01 7-17.02t17.02-7.01q10.01 0 17.02 7.01l102.1 102.1z"></path></svg></span><span>Undo</span></li>
-            <li class="menu" data-command="redo"><span role="img"><svg id="icon-redo" viewBox="0 0 1024 1024"><path d="M999.98 340.08q-10.01 0-17.02 7.01l-102.1 102.1q-69.07-89.09-170.67-140.64Q608.59 257 487.48 256q-184.18 4-316.81 114.11T0 654.39q58.06-107.11 161.66-170.17 103.6-63.06 232.73-65.06 107.1 1 197.19 45.54 90.09 44.55 152.15 121.62L616.6 713.45q-7 7-7 17.01 0 10.01 7 17.02t17.01 7.01h358.35q14.01 0 23.02-9.01t9.01-23.02V364.11q0-10.01-7-17.02t-17.01-7.01z"></path></svg></span><span>Redo</span></li>
-            <li class="menu" data-command="pasteHere"><span role="img"><svg id="icon-paste" viewBox="0 0 1024 1024"><path d="M795.99 199.33h-75.02v-62.16h109.31q10.72 0 19.3 8.58 8.57 8.57 8.57 19.29v102.88h-62.16v-68.59zM240.87 898.05h-75.02V199.33h75.02v-62.16H131.56q-10.72 0-19.29 8.58-8.57 8.57-8.57 19.29v760.88q0 10.71 8.57 18.75t19.29 9.11h102.88l6.43-55.73z m411.52-623.7H309.46V137.17h68.58V62.16q1.07-26.8 18.22-43.94Q413.41 1.08 440.2 0.01h75.01q26.8 1.07 43.94 18.21 17.14 17.14 18.22 43.94v75.01h75.02v137.18zM515.21 62.16H440.2v75.01h75.01V62.16z m405.09 938.77V548.69L720.97 342.93H343.75q-16.08 0-25.19 8.57-9.11 8.57-9.11 19.3v623.7q0 10.72 8.57 18.76 8.57 8.04 19.29 9.11H886q15 4.28 24.11-2.68 9.11-6.97 10.18-18.76z m-68.58-438.31H714.54v-151.1l137.18 151.1z m6.43 411.52H371.61V411.52h280.78v212.19h205.76v350.43z"></path></svg></span><span>Paste Here</span></li>
-          </ul>
-        `
-        menuContainer.innerHTML = canvasMenu
-        menuContainer.setAttribute('style', `position:absolute;left:${canvasX + 6}px;top:${canvasY + 6}px`)
+        showMenu('canvas', canvasX, canvasY)
         const menu = document.querySelector('.context-menu')
         const undoStack = graph.getUndoStack()
         const redoStack = graph.getRedoStack()
         const undoMenu = document.querySelector('li[data-command="undo"]')
         const redoMenu = document.querySelector('li[data-command="redo"]')
         const pasteHereMenu = document.querySelector('li[data-command="pasteHere"]')
-        let item
-        if (undoStack.length < 2) {
+        if (undoStack.length === 1) {
           undoMenu.classList.add('disabled')
+          undoMenu.setAttribute('style', 'cursor: not-allowed')
+        } else {
+          undoMenu.classList.remove('disabled')
+          undoMenu.removeAttribute('style')
         }
-        if (redoStack.length < 1) {
+        if (redoStack.length === 0) {
           redoMenu.classList.add('disabled')
+          redoMenu.setAttribute('style', 'cursor: not-allowed')
+        } else {
+          redoMenu.classList.remove('disabled')
+          redoMenu.removeAttribute('style')
         }
+        let item
         menu.addEventListener('click', e => {
           if (e.target.matches('span')) {
             item = e.target.parentElement
@@ -2253,12 +2255,13 @@
             item = e.target.parentElement.parentElement.parentElement
           }
           const { command } = item.dataset
-          switch(command) {
+          switch (command) {
             case 'undo':
-            if (undoStack.length > 1) {
-              console.log('command undo')
-            }
-            break
+              undo()
+              break
+            case 'redo':
+              redo()
+              break
           }
         })
       },
@@ -2266,11 +2269,159 @@
         menuContainer.setAttribute('style', `display:none`)
       }
     })
+    /**
+    * undo 操作
+    */
+    function undo() {
+      const undoStack = graph.getUndoStack()
+      if (!undoStack || undoStack.length === 1) {
+        return
+      }
+      const currentData = undoStack.pop()
+      if (currentData) {
+        const { action } = currentData
+        graph.pushStack(action, clone(currentData.data), 'redo')
+        let data = currentData.data.before
+
+        if (action === 'add') {
+          data = currentData.data.after;
+        }
+
+        if (!data) return
+        switch (action) {
+          case 'visible': {
+            Object.keys(data).forEach(key => {
+              const array = data[key]
+              if (!array) return
+              array.forEach(model => {
+                const item = graph.findById(model.id)
+                if (model.visible) {
+                  graph.showItem(item, false)
+                } else {
+                  graph.hideItem(item, false)
+                }
+              })
+            })
+            break
+          }
+          case 'render':
+          case 'update':
+            Object.keys(data).forEach(key => {
+              const array = data[key]
+              if (!array) return
+              array.forEach(model => {
+                graph.updateItem(model.id, model, false)
+              })
+            })
+            break
+          case 'changedata':
+            graph.changeData(data, false)
+            break
+          case 'delete': {
+            Object.keys(data).forEach(key => {
+              const array = data[key]
+              if (!array) return
+              array.forEach(model => {
+                console.log(model)
+                const itemType = model.type
+                delete model.type
+                graph.addItem(itemType, model, false)
+              })
+            })
+            break
+          }
+          case 'add':
+            Object.keys(data).forEach(key => {
+              const array = data[key]
+              if (!array) return
+              array.forEach(model => {
+                graph.removeItem(model.id, false)
+              })
+            })
+            break
+          default:
+        }
+      }
+    }
+    /**
+    * redo 操作
+    */
+    function redo() {
+      const redoStack = graph.getRedoStack()
+      if (!redoStack || redoStack.length === 0) {
+        return
+      }
+
+      const currentData = redoStack.pop()
+      if (currentData) {
+        const { action } = currentData
+        let data = currentData.data.after
+        graph.pushStack(action, clone(currentData.data), 'undo')
+        if (action === 'delete') {
+          data = currentData.data.before;
+        }
+
+        if (!data) return
+        switch (action) {
+          case 'visible': {
+            Object.keys(data).forEach(key => {
+              const array = data[key]
+              if (!array) return
+              array.forEach(model => {
+                const item = graph.findById(model.id)
+                if (model.visible) {
+                  graph.showItem(item, false)
+                } else {
+                  graph.hideItem(item, false)
+                }
+              })
+            })
+            break
+          }
+          case 'render':
+          case 'update':
+            Object.keys(data).forEach(key => {
+              const array = data[key]
+              if (!array) return
+              array.forEach(model => {
+                graph.updateItem(model.id, model, false)
+              })
+            })
+            break
+          case 'changedata':
+            graph.changeData(data, false)
+            break
+          case 'delete':
+            if (data.edges) {
+              data.edges.forEach(model => {
+                graph.removeItem(model.id, false)
+              })
+            }
+            if (data.nodes) {
+              data.nodes.forEach(model => {
+                graph.removeItem(model.id, false)
+              })
+            }
+            break
+          case 'add': {
+            Object.keys(data).forEach(key => {
+              const array = data[key]
+              if (!array) return
+              array.forEach(model => {
+                const itemType = model.itemType
+                delete model.itemType
+                graph.addItem(itemType, model, false)
+              })
+            })
+          }
+        }
+      }
+    }
     function updateItem(element, type, target) {
       if (type === 'label') {
         element.addEventListener('change', e => {
           const label = e.target.value
-          target.update({
+          const cfg = {
             label,
             labelCfg: {
               style: {
@@ -2280,7 +2431,14 @@
                 }
               }
             }
-          })
+          }
+          /** 
+          * node 的 label 无背景
+          */
+          if (target.get('type') === 'node') {
+            delete cfg.labelCfg.style
+          }
+          graph.updateItem(target, cfg, true)
         })
       }
 
@@ -2300,7 +2458,7 @@
             radius = 5
           }
           // 由于未使用 state，style 更新则会覆盖原有的 style，已有属性需要重新指定
-          target.update({
+          graph.updateItem(target, {
             type,
             style: {
               stroke: '#A3B1BF',
@@ -2313,7 +2471,7 @@
               radius,
               offset: 14
             }
-          })
+          }, true)
         })
       }
     }
@@ -2359,7 +2517,7 @@
           propertyContainer.innerHTML = ''
           propertyContainer.appendChild(labelRow)
           labelInput.value = label
-          updateItem(labelInput, item)
+          updateItem(labelInput, 'label', item)
         }
         if (item.getType() === 'edge') {
           let { label, type, style } = item.getModel()
@@ -2387,6 +2545,66 @@
         }
       }
     }
+    function setClipboard(node) {
+      let data = new DataTransfer()
+      navigator.clipboard.write(data).then(function () {
+        console.log('success')
+      }, function (e) {
+        console.log('failure', e)
+      })
+    }
+    function showMenu(name, x, y) {
+      let menuDom
+      if (name === 'canvas') {
+        menuDom = `
+          <ul class="context-menu" data-status="canvas-selected">
+            <li class="menu" data-command="undo"><span role="img"><svg id="icon-undo" viewBox="0 0 1024 1024"><path d="M143.14 449.19q69.07-89.09 170.67-140.64Q415.41 257 537.52 256q183.18 4 315.81 114.11T1024 654.39q-58.06-107.11-161.66-170.17-103.6-63.06-232.73-65.06-107.1 1-196.69 45.54-89.58 44.55-152.65 121.62L407.4 713.45q7 7 7 17.01 0 10.01-7 17.02t-17.01 7.01H32.04q-14.01 0-23.02-9.01T0.01 722.46V364.11q0-10.01 7-17.02t17.02-7.01q10.01 0 17.02 7.01l102.1 102.1z"></path></svg></span><span>Undo</span></li>
+            <li class="menu" data-command="redo"><span role="img"><svg id="icon-redo" viewBox="0 0 1024 1024"><path d="M999.98 340.08q-10.01 0-17.02 7.01l-102.1 102.1q-69.07-89.09-170.67-140.64Q608.59 257 487.48 256q-184.18 4-316.81 114.11T0 654.39q58.06-107.11 161.66-170.17 103.6-63.06 232.73-65.06 107.1 1 197.19 45.54 90.09 44.55 152.15 121.62L616.6 713.45q-7 7-7 17.01 0 10.01 7 17.02t17.01 7.01h358.35q14.01 0 23.02-9.01t9.01-23.02V364.11q0-10.01-7-17.02t-17.01-7.01z"></path></svg></span><span>Redo</span></li>
+            <li class="menu" data-command="pasteHere"><span role="img"><svg id="icon-paste" viewBox="0 0 1024 1024"><path d="M795.99 199.33h-75.02v-62.16h109.31q10.72 0 19.3 8.58 8.57 8.57 8.57 19.29v102.88h-62.16v-68.59zM240.87 898.05h-75.02V199.33h75.02v-62.16H131.56q-10.72 0-19.29 8.58-8.57 8.57-8.57 19.29v760.88q0 10.71 8.57 18.75t19.29 9.11h102.88l6.43-55.73z m411.52-623.7H309.46V137.17h68.58V62.16q1.07-26.8 18.22-43.94Q413.41 1.08 440.2 0.01h75.01q26.8 1.07 43.94 18.21 17.14 17.14 18.22 43.94v75.01h75.02v137.18zM515.21 62.16H440.2v75.01h75.01V62.16z m405.09 938.77V548.69L720.97 342.93H343.75q-16.08 0-25.19 8.57-9.11 8.57-9.11 19.3v623.7q0 10.72 8.57 18.76 8.57 8.04 19.29 9.11H886q15 4.28 24.11-2.68 9.11-6.97 10.18-18.76z m-68.58-438.31H714.54v-151.1l137.18 151.1z m6.43 411.52H371.61V411.52h280.78v212.19h205.76v350.43z"></path></svg></span><span>Paste Here</span></li>
+          </ul>
+        `
+      }
+      if (name === 'node') { }
+      menuContainer.innerHTML = menuDom
+      const menuElement = document.querySelector('.context-menu')
+      menuContainer.setAttribute('style', `position:absolute;left:${x + 6}px;top:${y + 6}px`)
+    }
+    function isType(value, type) {
+      const toString = {}.toString
+      return toString.call(value) === '[object ' + type + ']'
+    }
+    function isArray(value) {
+      return Array.isArray ?
+        Array.isArray(value) :
+        isType(value, 'Array')
+    }
+    function clone(obj) {
+      if (typeof obj !== 'object' || obj === null) {
+        return obj
+      }
+      let rst
+      if (isArray(obj)) {
+        rst = []
+        for (let i = 0, l = obj.length; i < l; i++) {
+          if (typeof obj[i] === 'object' && obj[i] != null) {
+            rst[i] = clone(obj[i])
+          } else {
+            rst[i] = obj[i]
+          }
+        }
+      } else {
+        rst = {}
+        for (const k in obj) {
+          if (typeof obj[k] === 'object' && obj[k] != null) {
+            rst[k] = clone(obj[k])
+          } else {
+            rst[k] = obj[k]
+          }
+        }
+      }
+      return rst
+    }
+
     const graph = new G6.Graph({
       container: canvas,
       width: container.clientWidth - 480,
@@ -2417,6 +2635,35 @@
 
     graph.setMode('edit')
     graph.render()
+    graph.on('stackchange', e => {
+      const undoStack = graph.getUndoStack()
+      const redoStack = graph.getRedoStack()
+      const undoMenu = document.querySelector('li[data-command="undo"]')
+      const redoMenu = document.querySelector('li[data-command="redo"]')
+      if (undoStack.length === 1) {
+        if (undoMenu) {
+          undoMenu.classList.add('disabled')
+          undoMenu.setAttribute('style', 'cursor: not-allowed')
+        }
+      } else {
+        if (undoMenu) {
+          undoMenu.classList.remove('disabled')
+          undoMenu.removeAttribute('style')
+        }
+      }
+      if (redoStack.length === 0) {
+        console.log('0')
+        if (redoMenu) {
+          redoMenu.classList.add('disabled')
+          redoMenu.setAttribute('style', 'cursor: not-allowed')
+        }
+      } else {
+        if (redoMenu) {
+          redoMenu.classList.remove('disabled')
+          redoMenu.removeAttribute('style')
+        }
+      }
+    })
   </script>
 </body>
 

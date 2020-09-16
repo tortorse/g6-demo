@@ -213,7 +213,7 @@
     </div>
   </div>
   <!-- <script src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.6.1/dist/g6.min.js"></script> -->
-  <script src="https://gw.alipayobjects.com/os/lib/antv/g6/3.7.2/dist/g6.min.js"></script>
+  <script src="https://gw.alipayobjects.com/os/lib/antv/g6/3.7.3/dist/g6.min.js"></script>
   <script>
     const container = document.querySelector('.container')
     const items = document.querySelectorAll('.items .item')
@@ -1412,7 +1412,7 @@
               lineWidth: 1,
             },
             id: 'delegateShape',
-          }, true)
+          }, false)
         }
       },
       onDrag(e) {
@@ -1946,8 +1946,7 @@
             y
           }
           const delegateShape = graph.findById('delegateShape')
-          item.updatePosition(cfg)
-          graph.updateItem(item, {})
+          graph.updateItem(item, cfg, true)
 
           const selectedNodes = graph.findAllByState('node', 'selected')
           selectedNodes.forEach(node => {
@@ -1955,7 +1954,7 @@
           })
           graph.setItemState(item, 'selected', true)
           graph.setItemState(item, 'show-anchor', true)
-          graph.removeItem(delegateShape)
+          graph.removeItem(delegateShape, false)
           const edges = graph.getEdges()
           const edgeCfg = {
             style: {
@@ -2198,12 +2197,10 @@
         if (keyCode === 46) {
           // 先删除edge，因为删除 node 的同时， edge 也不复存在，无法再次删除
           edges.forEach((edge) => {
-            // 不使用 removeItem issue: https://github.com/antvis/G6/issues/2096
-            graph.hideItem(edge, true)
+            graph.removeItem(edge, true)
           })
           nodes.forEach((node) => {
-            // 不使用 removeItem issue: https://github.com/antvis/G6/issues/2096
-            graph.hideItem(node, true)
+            graph.removeItem(node, true)
           })
         }
       }
@@ -2213,6 +2210,8 @@
         return {
           'canvas:contextmenu': 'onCanvasContextMenu',
           'canvas:click': 'onCanvasClick',
+          'node:contextmenu': 'onNodeContextMenu',
+          'edge:contextmenu': 'onEdgeContextMenu'
         }
       },
       onCanvasContextMenu(e) {
@@ -2240,6 +2239,13 @@
           redoMenu.classList.remove('disabled')
           redoMenu.removeAttribute('style')
         }
+        if (!clipboard) {
+          pasteHereMenu.classList.add('disabled')
+          pasteHereMenu.setAttribute('style', 'cursor: not-allowed')
+        } else {
+          pasteHereMenu.classList.remove('disabled')
+          pasteHereMenu.removeAttribute('style')
+        }
         let item
         menu.addEventListener('click', e => {
           if (e.target.matches('span')) {
@@ -2262,6 +2268,76 @@
             case 'redo':
               redo()
               break
+            case 'pasteHere':
+              if (clipboard) {
+                paste(canvasX, canvasY)
+              }
+              break
+          }
+        })
+      },
+      onNodeContextMenu(e) {
+        e.preventDefault()
+        e.stopPropagation()
+        const { canvasX, canvasY } = e
+        showMenu('node', canvasX, canvasY)
+        const menu = document.querySelector('.context-menu')
+        let item
+        let currentNode = e.item
+        menu.addEventListener('click', e => {
+          if (e.target.matches('span')) {
+            item = e.target.parentElement
+          }
+          if (e.target.matches('li')) {
+            item = e.target
+          }
+          if (e.target.matches('svg')) {
+            item = e.target.parentElement.parentElement
+          }
+          if (e.target.matches('path')) {
+            item = e.target.parentElement.parentElement.parentElement
+          }
+          const { command } = item.dataset
+          switch (command) {
+            case 'copy':
+              copy(currentNode)
+              break
+            case 'delete':
+              graph.removeItem(currentNode, true)
+              menuContainer.setAttribute('style', `display:none`)
+              break
+            default:
+          }
+        })
+      },
+      onEdgeContextMenu(e) {
+        e.preventDefault()
+        e.stopPropagation()
+        const { canvasX, canvasY } = e
+        showMenu('edge', canvasX, canvasY)
+        const menu = document.querySelector('.context-menu')
+        let item
+        let currentEdge = e.item
+        menu.addEventListener('click', e => {
+          if (e.target.matches('span')) {
+            item = e.target.parentElement
+          }
+          if (e.target.matches('li')) {
+            item = e.target
+          }
+          if (e.target.matches('svg')) {
+            item = e.target.parentElement.parentElement
+          }
+          if (e.target.matches('path')) {
+            item = e.target.parentElement.parentElement.parentElement
+          }
+          const { command } = item.dataset
+          switch (command) {
+            case 'delete':
+              graph.removeItem(currentEdge, true)
+              menuContainer.setAttribute('style', `display:none`)
+              break
+            default:
           }
         })
       },
@@ -2322,9 +2398,8 @@
               const array = data[key]
               if (!array) return
               array.forEach(model => {
-                console.log(model)
-                const itemType = model.type
-                delete model.type
+                const itemType = model.itemType
+                delete model.itemType
                 graph.addItem(itemType, model, false)
               })
             })
@@ -2341,6 +2416,7 @@
             break
           default:
         }
+        menuContainer.setAttribute('style', `display:none`)
       }
     }
     /**
@@ -2415,6 +2491,7 @@
             })
           }
         }
+        menuContainer.setAttribute('style', `display:none`)
       }
     }
     function updateItem(element, type, target) {
@@ -2545,14 +2622,6 @@
         }
       }
     }
-    function setClipboard(node) {
-      let data = new DataTransfer()
-      navigator.clipboard.write(data).then(function () {
-        console.log('success')
-      }, function (e) {
-        console.log('failure', e)
-      })
-    }
     function showMenu(name, x, y) {
       let menuDom
       if (name === 'canvas') {
@@ -2564,10 +2633,42 @@
           </ul>
         `
       }
-      if (name === 'node') { }
+      if (name === 'node') {
+        menuDom = `
+          <ul class="context-menu" data-status="canvas-selected">
+            <li class="menu" data-command="copy"><span role="img"><svg id="icon-copy" viewBox="0 0 1024 1024"><path d="M990.08 1017.64h-549.1q-10.6 0-18.55-8.48-7.95-8.48-9.01-19.08V373.13q1.06-10.6 10.07-18.55 9.01-7.95 23.85-9.01h373.13L1024 549.1v448.4q-5.3 5.3-14.31 12.19-9.01 6.89-19.61 7.95zM814.11 407.06v135.68H949.8L814.11 407.06zM949.8 610.58H746.27V407.06H474.9V949.8h474.9V610.58z m-610.59 67.85H67.84V67.84h271.37v203.53h271.37v-67.84L407.06 0H33.92Q18.02 0 9.01 8.48T0 27.56v684.79q0 10.6 8.48 18.55 8.48 7.95 19.08 9.01h311.65v-61.48z m67.85-610.59l135.68 135.69H407.06V67.84z"></path></svg></span><span>Copy</span></li>
+            <li class="menu" data-command="delete"><span role="img"><svg id="icon-delete" viewBox="0 0 1024 1024"><path d="M828.55 311.65q-17.81 0-30.05 11.13-12.25 11.13-14.47 28.94l-52.32 529.81h-95.72l16.7-461.91q0-14.47-10.02-25.05-10.02-10.57-25.05-11.13-15.02-0.56-25.6 8.91-10.58 9.46-10.58 25.04l-16.69 464.14H459.01l-15.58-465.25q-1.12-15.58-11.69-25.04-10.57-9.47-25.6-8.91-15.03 0.56-24.49 11.13-9.46 10.57-9.46 25.04l15.58 463.03h-94.6l-52.32-529.81q-2.22-17.81-14.47-28.94-12.24-11.13-30.05-11.13h-3.34q-15.58 2.23-25.04 13.36-9.46 11.13-8.35 26.71l60.1 599.93q3.34 31.17 25.6 51.21 22.26 20.03 53.43 21.14h426.3q31.16-1.11 53.42-21.14t26.72-51.21l58.99-603.27q0-15.58-10.57-26.15-10.58-10.58-25.05-10.58z m107.96-71.23l-7.79-61.22q-5.56-35.62-31.72-57.88-26.15-22.26-61.77-23.37h-170.3l-3.34-32.28q-2.22-28.94-22.25-46.75Q619.3 1.11 590.36 0H433.42Q404.48 1.11 385 18.92q-19.48 17.81-22.82 46.75l-2.22 32.28H188.55q-35.62 1.11-61.22 23.37T96.17 179.2l-8.91 63.44q0 7.79 5.01 12.8 5.01 5.01 12.8 5.01h816.98q6.67-1.11 11.13-6.68 4.46-5.56 3.34-13.35zM422.29 97.95l2.22-27.83q1.12-6.68 8.91-7.79h158.05q6.68 1.11 8.91 7.79l1.11 27.83h-179.2z"></path></svg></span><span>Delete</span></li>
+          </ul>
+        `
+      }
+      if (name === 'edge') {
+        menuDom = `
+          <ul class="context-menu" data-status="canvas-selected">
+            <li class="menu" data-command="delete"><span role="img"><svg id="icon-delete" viewBox="0 0 1024 1024"><path d="M828.55 311.65q-17.81 0-30.05 11.13-12.25 11.13-14.47 28.94l-52.32 529.81h-95.72l16.7-461.91q0-14.47-10.02-25.05-10.02-10.57-25.05-11.13-15.02-0.56-25.6 8.91-10.58 9.46-10.58 25.04l-16.69 464.14H459.01l-15.58-465.25q-1.12-15.58-11.69-25.04-10.57-9.47-25.6-8.91-15.03 0.56-24.49 11.13-9.46 10.57-9.46 25.04l15.58 463.03h-94.6l-52.32-529.81q-2.22-17.81-14.47-28.94-12.24-11.13-30.05-11.13h-3.34q-15.58 2.23-25.04 13.36-9.46 11.13-8.35 26.71l60.1 599.93q3.34 31.17 25.6 51.21 22.26 20.03 53.43 21.14h426.3q31.16-1.11 53.42-21.14t26.72-51.21l58.99-603.27q0-15.58-10.57-26.15-10.58-10.58-25.05-10.58z m107.96-71.23l-7.79-61.22q-5.56-35.62-31.72-57.88-26.15-22.26-61.77-23.37h-170.3l-3.34-32.28q-2.22-28.94-22.25-46.75Q619.3 1.11 590.36 0H433.42Q404.48 1.11 385 18.92q-19.48 17.81-22.82 46.75l-2.22 32.28H188.55q-35.62 1.11-61.22 23.37T96.17 179.2l-8.91 63.44q0 7.79 5.01 12.8 5.01 5.01 12.8 5.01h816.98q6.67-1.11 11.13-6.68 4.46-5.56 3.34-13.35zM422.29 97.95l2.22-27.83q1.12-6.68 8.91-7.79h158.05q6.68 1.11 8.91 7.79l1.11 27.83h-179.2z"></path></svg></span><span>Delete</span></li>
+          </ul>
+        `
+      }
       menuContainer.innerHTML = menuDom
-      const menuElement = document.querySelector('.context-menu')
       menuContainer.setAttribute('style', `position:absolute;left:${x + 6}px;top:${y + 6}px`)
+    }
+    let clipboard
+    function copy(node) {
+      clipboard = node
+      menuContainer.setAttribute('style', `display:none`)
+    }
+    /**
+    * edge 的粘贴没有实际意义，只需考虑 node
+    */
+    function paste(x, y) {
+      const timestamp = new Date().getTime()
+      const id = `line-${timestamp}`
+      const model = clipboard.getModel()
+      console.log(model)
+      model.id = id
+      model.x = x + parseInt(model.width / 2)
+      model.y = y + parseInt(model.height / 2)
+      graph.addItem('node', model, true)
+      menuContainer.setAttribute('style', `display:none`)
     }
     function isType(value, type) {
       const toString = {}.toString
@@ -2652,7 +2753,6 @@
         }
       }
       if (redoStack.length === 0) {
-        console.log('0')
         if (redoMenu) {
           redoMenu.classList.add('disabled')
           redoMenu.setAttribute('style', 'cursor: not-allowed')

@@ -447,6 +447,10 @@
           graph.fitCenter()
           break
         }
+        case 'brush-select': {
+          graph.setMode('brushSelect')
+          graph.get('canvas').get('el').style.cursor = 'crosshair'
+        }
         default:
       }
     })
@@ -1637,7 +1641,6 @@
         if (e.target.get('name') !== 'anchor') {
           group.set('capture', false)
           const { item } = e
-          console.log('drag', item)
           const delegateShape = graph.findById('delegateShape')
           const bbox = item.getBBox()
           const { minX, minY } = bbox
@@ -2161,12 +2164,16 @@
           const horizontalAlignLine = group.findById('horizontal-align-line')
           group.removeChild(verticalAlignLine)
           group.removeChild(horizontalAlignLine)
-          const { item, x, y } = e
-          const cfg = {
-            x,
-            y
-          }
+          const { item } = e
+
           const delegateShape = graph.findById('delegateShape')
+          const { x, y, width, height } = delegateShape.getBBox()
+          const clientX = x + parseInt(width / 2)
+          const clientY = y + parseInt(height / 2)
+          const cfg = {
+            x: clientX,
+            y: clientY
+          }
           graph.updateItem(item, cfg, true)
 
           const selectedNodes = graph.findAllByState('node', 'selected')
@@ -2938,6 +2945,13 @@
             type: 'drag-canvas'
           }
         ],
+        brushSelect: [
+          {
+            type: 'brush-select',
+            trigger: 'drag',
+            includeEdges: false
+          }
+        ],
         edit: [
           'drag-canvas',
           'dragPanelItemAddNode',
@@ -2984,6 +2998,14 @@
           redoMenu.classList.remove('disabled')
           redoMenu.removeAttribute('style')
         }
+      }
+    })
+    graph.on('dragend', e => {
+      const mode = graph.getCurrentMode()
+      if (mode === 'brushSelect') {
+        setTimeout(() => {
+          graph.setMode('edit')
+        }, 0)
       }
     })
   </script>

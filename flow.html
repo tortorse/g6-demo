@@ -438,6 +438,22 @@
       const { command } = item.dataset
       const currentZoom = graph.getZoom()
       switch (command) {
+        case 'zoom-in': {
+          const ratioOut = 1 + 0.05 * 5
+          if (ratioOut * currentZoom > 5) {
+            return
+          }
+          graph.zoomTo(currentZoom * 1.1)
+          break
+        }
+        case 'zoom-out': {
+          const ratioIn = 1 - 0.05 * 5
+          if (ratioIn * currentZoom < 0.3) {
+            return
+          }
+          graph.zoomTo(currentZoom * 0.9)
+          break
+        }
         case 'fit-map': {
           graph.fitView(40)
           break
@@ -450,6 +466,7 @@
         case 'brush-select': {
           graph.setMode('brushSelect')
           graph.get('canvas').get('el').style.cursor = 'crosshair'
+          break
         }
         default:
       }

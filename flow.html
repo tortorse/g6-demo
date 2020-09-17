@@ -439,7 +439,12 @@
       const currentZoom = graph.getZoom()
       switch (command) {
         case 'fit-map': {
-          graph.fitView([150, 150])
+          graph.fitView(40)
+          break
+        }
+        case 'actual-size': {
+          graph.zoomTo(1)
+          graph.fitCenter()
           break
         }
         default:
@@ -2238,7 +2243,7 @@
         const delegateEdge = group.findById('delegate-edge')
 
         if (e.target.get('name') === 'anchor') {
-          const {x, y, item } = e
+          const { x, y, item } = e
           const index = e.target.get('index')
           const { minX, minY, centerX, centerY, maxX, maxY } = item.getBBox()
           const anchors = [

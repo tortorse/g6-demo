@@ -438,6 +438,35 @@
       const { command } = item.dataset
       const currentZoom = graph.getZoom()
       switch (command) {
+        case 'undo': {
+          undo()
+          break
+        }
+        case 'redo': {
+          redo()
+          break
+        }
+        case 'paste': {
+          paste()
+          break
+        }
+        case 'delete': {
+          const nodes = graph.findAllByState('node', 'selected')
+          const edges = graph.findAllByState('edge', 'selected')
+          if (nodes.length) {
+            nodes.forEach(node => {
+              graph.removeItem(node, true)
+            })
+            graph.emit('unselect', nodes)
+          }
+          if (edges.length) {
+            edges.forEach(edge => {
+              graph.removeItem(edge, true)
+            })
+            graph.emit('unselect', edges)
+          }
+          break
+        }
         case 'zoom-in': {
           const ratioOut = 1 + 0.05 * 5
           if (ratioOut * currentZoom > 5) {
@@ -1348,8 +1377,11 @@
             graph.setItemState(node, 'show-anchor', false)
           })
         }
+        let nodes = []
         if (!item.hasState('selected')) {
           item.setState('selected', true)
+          nodes.push(item)
+          graph.emit('select', nodes)
           setDetailPanel(item)
         }
         item.setState('show-anchor', true)
@@ -1369,27 +1401,29 @@
       onCanvasClick(e) {
         const self = this
         const graph = self.graph
-        const nodes = graph.getNodes()
-        const edges = graph.getEdges()
-        nodes.forEach(node => {
-          if (node.hasState('selected')) {
+        const nodes = graph.findAllByState('node', 'selected')
+        const edges = graph.findAllByState('edge', 'selected')
+        if (nodes.length) {
+          nodes.forEach(node => {
             graph.clearItemStates(node, 'selected')
-          }
-          if (node.hasState('show-anchor')) {
-            graph.clearItemStates(node, 'show-anchor')
-          }
-        })
+            graph.emit('unselect', nodes)
+            if (node.hasState('show-anchor')) {
+              graph.clearItemStates(node, 'show-anchor')
+            }
+          })
+        }
         const edgeCfg = {
           style: {
             lineWidth: 1
           }
         }
-        edges.forEach(edge => {
-          if (edge.hasState('selected')) {
+        if (edges.length) {
+          edges.forEach(edge => {
             graph.clearItemStates(edge, 'selected')
+            graph.emit('unselect', edges)
             graph.updateItem(edge, edgeCfg, false)
-          }
-        })
+          })
+        }
         setDetailPanel('canvas')
       },
       onEdgeClick(e) {
@@ -1423,6 +1457,9 @@
           }
           graph.updateItem(item, cfg, false)
           setDetailPanel(item)
+          edges = []
+          edges.push(item)
+          graph.emit('select', edges)
           const nodes = graph.getNodes()
           nodes.forEach(node => {
             if (node.hasState('selected')) {
@@ -1595,6 +1632,9 @@
           }
           graph.setItemState(id, 'show-anchor', true)
           graph.setItemState(id, 'selected', true)
+          let nodes = []
+          nodes.push(graph.findById(id))
+          graph.emit('select', nodes)
           setDetailPanel(graph.findById(id))
         }
       },
@@ -2210,6 +2250,7 @@
           edges.forEach(edge => {
             if (edge.hasState('selected')) {
               graph.clearItemStates(edge, 'selected')
+              graph.emit('unselect', edges)
               graph.updateItem(edge, edgeCfg)
             }
           })
@@ -2443,12 +2484,18 @@
         const { keyCode } = e
         if (keyCode === 46) {
           // 先删除edge，因为删除 node 的同时， edge 也不复存在，无法再次删除
-          edges.forEach((edge) => {
-            graph.removeItem(edge, true)
-          })
-          nodes.forEach((node) => {
-            graph.removeItem(node, true)
-          })
+          if (edges) {
+            edges.forEach((edge) => {
+              graph.removeItem(edge, true)
+            })
+            graph.emit('unselect', edges)
+          }
+          if (nodes) {
+            nodes.forEach((node) => {
+              graph.removeItem(node, true)
+            })
+            graph.emit('unselect', nodes)
+          }
         }
       }
     })
@@ -2550,7 +2597,10 @@
               copy(currentNode)
               break
             case 'delete':
+              const nodes = []
+              nodes.push(currentNode)
               graph.removeItem(currentNode, true)
+              graph.emit('unselect', nodes)
               menuContainer.setAttribute('style', `display:none`)
               break
             default:
@@ -2581,6 +2631,9 @@
           const { command } = item.dataset
           switch (command) {
             case 'delete':
+              let edges = []
+              edges.push(currentEdge)
+              graph.emit('unselect', edges)
               graph.removeItem(currentEdge, true)
               menuContainer.setAttribute('style', `display:none`)
               break
@@ -2901,6 +2954,7 @@
     let clipboard
     function copy(node) {
       clipboard = node
+      graph.emit('copy', node)
       menuContainer.setAttribute('style', `display:none`)
     }
     /**
@@ -2910,9 +2964,16 @@
       const timestamp = new Date().getTime()
       const id = `line-${timestamp}`
       const model = clipboard.getModel()
+      if (x && y) {
+        model.id = id
+        model.x = x + parseInt(model.width / 2)
+        model.y = y + parseInt(model.height / 2)
+      }
+      graph.clearItemStates(clipboard, 'selected')
+      graph.setItemState(clipboard, 'show-anchor', false)
       model.id = id
-      model.x = x + parseInt(model.width / 2)
-      model.y = y + parseInt(model.height / 2)
+      model.x = model.x + 10
+      model.y = model.y + 10
       graph.addItem('node', model, true)
       menuContainer.setAttribute('style', `display:none`)
     }
@@ -2966,7 +3027,12 @@
           {
             type: 'brush-select',
             trigger: 'drag',
-            includeEdges: false
+            includeEdges: false,
+            onSelect: (nodes) => {
+              if (nodes.length) {
+                graph.emit('select', nodes)
+              }
+            },
           }
         ],
         edit: [
@@ -3024,6 +3090,21 @@
           graph.setMode('edit')
         }, 0)
       }
+    })
+    graph.on('copy', e => {
+      const copyItem = document.querySelector('.toolbar li[data-command="paste"]')
+      copyItem.classList.remove('disabled')
+      copyItem.removeAttribute('style')
+    })
+    graph.on('select', e => {
+      const deleteItem = document.querySelector('.toolbar li[data-command="delete"]')
+      deleteItem.classList.remove('disabled')
+      deleteItem.removeAttribute('style')
+    })
+    graph.on('unselect', e => {
+      const deleteItem = document.querySelector('.toolbar li[data-command="delete"]')
+      deleteItem.classList.add('disabled')
+      deleteItem.setAttribute('style', 'cursor: not-allowed')
     })
   </script>
 </body>

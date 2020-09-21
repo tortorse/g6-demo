@@ -446,6 +446,13 @@
           redo()
           break
         }
+        case 'copy': {
+          const nodes = graph.findAllByState('node', 'selected')
+          if (nodes.length) {
+            copy(nodes)
+          }
+          break
+        }
         case 'paste': {
           paste()
           break
@@ -2238,6 +2245,9 @@
             graph.clearItemStates(node, 'selected')
           })
           graph.setItemState(item, 'selected', true)
+          const nodes = []
+          nodes.push(item)
+          graph.emit('select', nodes)
           graph.setItemState(item, 'show-anchor', true)
           graph.removeItem(delegateShape, false)
           this.origin = null
@@ -2511,7 +2521,7 @@
       onCanvasContextMenu(e) {
         e.preventDefault()
         e.stopPropagation()
-        const { canvasX, canvasY } = e
+        const { canvasX, canvasY, x, y } = e
         showMenu('canvas', canvasX, canvasY)
         const menu = document.querySelector('.context-menu')
         const undoStack = graph.getUndoStack()
@@ -2533,7 +2543,7 @@
           redoMenu.classList.remove('disabled')
           redoMenu.removeAttribute('style')
         }
-        if (!clipboard) {
+        if (clipboard.length === 0) {
           pasteHereMenu.classList.add('disabled')
           pasteHereMenu.setAttribute('style', 'cursor: not-allowed')
         } else {
@@ -2563,8 +2573,8 @@
               redo()
               break
             case 'pasteHere':
-              if (clipboard) {
-                paste(canvasX, canvasY)
+              if (clipboard.length) {
+                paste(x, y)
               }
               break
           }
@@ -2592,12 +2602,13 @@
             item = e.target.parentElement.parentElement.parentElement
           }
           const { command } = item.dataset
+          let nodes = []
           switch (command) {
             case 'copy':
-              copy(currentNode)
+              nodes.push(currentNode)
+              copy(nodes)
               break
             case 'delete':
-              const nodes = []
               nodes.push(currentNode)
               graph.removeItem(currentNode, true)
               graph.emit('unselect', nodes)
@@ -2949,12 +2960,12 @@
         `
       }
       menuContainer.innerHTML = menuDom
-      menuContainer.setAttribute('style', `position:absolute;left:${x + 6}px;top:${y + 6}px`)
+      menuContainer.setAttribute('style', `position:absolute;left:${x}px;top:${y}px`)
     }
-    let clipboard
-    function copy(node) {
-      clipboard = node
-      graph.emit('copy', node)
+    let clipboard = []
+    function copy(nodes) {
+      clipboard = nodes
+      graph.emit('copy', nodes)
       menuContainer.setAttribute('style', `display:none`)
     }
     /**
@@ -2962,19 +2973,57 @@
     */
     function paste(x, y) {
       const timestamp = new Date().getTime()
-      const id = `line-${timestamp}`
-      const model = clipboard.getModel()
-      if (x && y) {
+      if (clipboard.length === 1) {
+        const model = clipboard[0].getModel()
+        const id = `${model.type}-${timestamp}`
         model.id = id
-        model.x = x + parseInt(model.width / 2)
-        model.y = y + parseInt(model.height / 2)
+        model.x = model.x + 10
+        model.y = model.y + 10
+        if (x && y) {
+          model.x = x + parseInt(model.width / 2)
+          model.y = y + parseInt(model.height / 2)
+        }
+        graph.clearItemStates(clipboard[0], 'selected')
+        let nodes = []
+        nodes.push(clipboard[0])
+        graph.emit('unselect', nodes)
+        graph.setItemState(clipboard[0], 'show-anchor', false)
+        graph.addItem('node', model, true)
       }
-      graph.clearItemStates(clipboard, 'selected')
-      graph.setItemState(clipboard, 'show-anchor', false)
-      model.id = id
-      model.x = model.x + 10
-      model.y = model.y + 10
-      graph.addItem('node', model, true)
+
+      if (clipboard.length > 1) {
+        let xDistance
+        let yDistance
+        let stackData = {
+          before: {},
+          after: {
+            nodes: [],
+            edges: [],
+            combos: []
+          }
+        }
+        clipboard.forEach((node, index) => {
+          const model = node.getModel()
+          const id = `${model.type}-${timestamp}-${index}`
+          model.id = id
+          if (x && y) {
+            if (index === 0) {
+              xDistance = x - model.x
+              yDistance = y - model.y
+            }
+            model.x = model.x + xDistance + model.width / 2
+            model.y = model.y + yDistance
+          } else {
+            model.x = model.x + 10
+            model.y = model.y + 10
+          }
+          model.itemType = 'node'
+          stackData.after.nodes.push(model)
+          graph.addItem('node', model, false)
+        })
+        graph.pushStack('add', clone(stackData))
+      }
+
       menuContainer.setAttribute('style', `display:none`)
     }
     function isType(value, type) {
@@ -3100,11 +3149,19 @@
       const deleteItem = document.querySelector('.toolbar li[data-command="delete"]')
       deleteItem.classList.remove('disabled')
       deleteItem.removeAttribute('style')
+
+      const copyItem = document.querySelector('.toolbar li[data-command="copy"]')
+      copyItem.classList.remove('disabled')
+      copyItem.removeAttribute('style')
     })
     graph.on('unselect', e => {
       const deleteItem = document.querySelector('.toolbar li[data-command="delete"]')
       deleteItem.classList.add('disabled')
       deleteItem.setAttribute('style', 'cursor: not-allowed')
+
+      const copyItem = document.querySelector('.toolbar li[data-command="copy"]')
+      copyItem.classList.add('disabled')
+      copyItem.setAttribute('style', 'cursor: not-allowed')
     })
   </script>
 </body>

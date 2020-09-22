@@ -390,6 +390,8 @@
     </div>
   </div>
   <script src="https://gw.alipayobjects.com/os/lib/antv/g6/3.7.3/dist/g6.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.20/lodash.min.js"
+    integrity="sha256-ur/YlHMU96MxHEsy3fHGszZHas7NzH4RQlD4tDVvFhw=" crossorigin="anonymous"></script>
   <script>
     const container = document.querySelector('.container')
     const items = document.querySelectorAll('.items .item')
@@ -2523,6 +2525,12 @@
         e.stopPropagation()
         const { canvasX, canvasY, x, y } = e
         showMenu('canvas', canvasX, canvasY)
+        // 清除所有节点选中状态
+        const nodes = graph.findAllByState('node', 'selected')
+        nodes.forEach(node => {
+          graph.clearItemStates(node, 'selected')
+          graph.setItemState(node, 'show-anchor', false)
+        })
         const menu = document.querySelector('.context-menu')
         const undoStack = graph.getUndoStack()
         const redoStack = graph.getRedoStack()
@@ -2964,7 +2972,15 @@
     }
     let clipboard = []
     function copy(nodes) {
-      clipboard = nodes
+      clipboard = []
+      if (nodes && nodes.length) {
+        nodes.forEach(node => {
+          clipboard.push({
+            type: node.get('type'),
+            model: node.getModel()
+          })
+        })
+      }
       graph.emit('copy', nodes)
       menuContainer.setAttribute('style', `display:none`)
     }
@@ -2974,7 +2990,7 @@
     function paste(x, y) {
       const timestamp = new Date().getTime()
       if (clipboard.length === 1) {
-        const model = clipboard[0].getModel()
+        const model = clipboard[0].model
         const id = `${model.type}-${timestamp}`
         model.id = id
         model.x = model.x + 10
@@ -2983,11 +2999,9 @@
           model.x = x + parseInt(model.width / 2)
           model.y = y + parseInt(model.height / 2)
         }
-        graph.clearItemStates(clipboard[0], 'selected')
         let nodes = []
         nodes.push(clipboard[0])
         graph.emit('unselect', nodes)
-        graph.setItemState(clipboard[0], 'show-anchor', false)
         graph.addItem('node', model, true)
       }
 
@@ -3003,7 +3017,7 @@
           }
         }
         clipboard.forEach((node, index) => {
-          const model = node.getModel()
+          const model = node.model
           const id = `${model.type}-${timestamp}-${index}`
           model.id = id
           if (x && y) {
@@ -3141,9 +3155,9 @@
       }
     })
     graph.on('copy', e => {
-      const copyItem = document.querySelector('.toolbar li[data-command="paste"]')
-      copyItem.classList.remove('disabled')
-      copyItem.removeAttribute('style')
+      const pasteItem = document.querySelector('.toolbar li[data-command="paste"]')
+      pasteItem.classList.remove('disabled')
+      pasteItem.removeAttribute('style')
     })
     graph.on('select', e => {
       const deleteItem = document.querySelector('.toolbar li[data-command="delete"]')

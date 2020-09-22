@@ -501,6 +501,46 @@
           graph.fitCenter()
           break
         }
+        case 'to-back': {
+          const nodes = graph.findAllByState('node', 'selected')
+          if (nodes.length) {
+            let stackData = {
+              before: {},
+              after: {
+                nodes: [],
+                edges: [],
+                combos: []
+              }
+            }
+            nodes.forEach(node => {
+              const model = node.getModel()
+              node.toBack()
+              stackData.after.nodes.push(model)
+            })
+            graph.pushStack('toBack', clone(stackData))
+          }
+          break
+        }
+        case 'to-front': {
+          const nodes = graph.findAllByState('node', 'selected')
+          if (nodes.length) {
+            let stackData = {
+              before: {},
+              after: {
+                nodes: [],
+                edges: [],
+                combos: []
+              }
+            }
+            nodes.forEach(node => {
+              const model = node.getModel()
+              node.toFront()
+              stackData.after.nodes.push(model)
+              graph.pushStack('toFront', clone(stackData))
+            })
+          }
+          break
+        }
         case 'brush-select': {
           graph.setMode('brushSelect')
           graph.get('canvas').get('el').style.cursor = 'crosshair'
@@ -2531,6 +2571,7 @@
           graph.clearItemStates(node, 'selected')
           graph.setItemState(node, 'show-anchor', false)
         })
+        graph.emit('unselect', nodes)
         const menu = document.querySelector('.context-menu')
         const undoStack = graph.getUndoStack()
         const redoStack = graph.getRedoStack()
@@ -2678,7 +2719,7 @@
         graph.pushStack(action, clone(currentData.data), 'redo')
         let data = currentData.data.before
 
-        if (action === 'add') {
+        if (action === 'add' || action === 'toBack' || action === 'toFront') {
           data = currentData.data.after;
         }
 
@@ -2730,6 +2771,25 @@
               if (!array) return
               array.forEach(model => {
                 graph.removeItem(model.id, false)
+              })
+            })
+            break
+          case 'toBack':
+            Object.keys(data).forEach(key => {
+              const array = data[key]
+              if (!array) return
+              array.forEach(model => {
+                graph.findById(model.id).toFront()
+              })
+            })
+            break
+          case 'toFront':
+            console.log(data)
+            Object.keys(data).forEach(key => {
+              const array = data[key]
+              if (!array) return
+              array.forEach(model => {
+                graph.findById(model.id).toBack()
               })
             })
             break
@@ -2808,7 +2868,29 @@
                 graph.addItem(itemType, model, false)
               })
             })
+            break
           }
+          case 'toBack': {
+            Object.keys(data).forEach(key => {
+              const array = data[key]
+              if (!array) return
+              array.forEach(model => {
+                graph.findById(model.id).toBack()
+              })
+            })
+            break
+          }
+          case 'toFront': {
+            Object.keys(data).forEach(key => {
+              const array = data[key]
+              if (!array) return
+              array.forEach(model => {
+                graph.findById(model.id).toFront()
+              })
+            })
+            break
+          }
+          default:
         }
         menuContainer.setAttribute('style', `display:none`)
       }
@@ -3167,6 +3249,14 @@
       const copyItem = document.querySelector('.toolbar li[data-command="copy"]')
       copyItem.classList.remove('disabled')
       copyItem.removeAttribute('style')
+
+      const toFrontItem = document.querySelector('.toolbar li[data-command="to-front"]')
+      toFrontItem.classList.remove('disabled')
+      toFrontItem.removeAttribute('style')
+
+      const toBackItem = document.querySelector('.toolbar li[data-command="to-back"]')
+      toBackItem.classList.remove('disabled')
+      toBackItem.removeAttribute('style')
     })
     graph.on('unselect', e => {
       const deleteItem = document.querySelector('.toolbar li[data-command="delete"]')
@@ -3176,6 +3266,14 @@
       const copyItem = document.querySelector('.toolbar li[data-command="copy"]')
       copyItem.classList.add('disabled')
       copyItem.setAttribute('style', 'cursor: not-allowed')
+
+      const toFrontItem = document.querySelector('.toolbar li[data-command="to-front"]')
+      toFrontItem.classList.add('disabled')
+      toFrontItem.setAttribute('style', 'cursor: not-allowed')
+
+      const toBackItem = document.querySelector('.toolbar li[data-command="to-back"]')
+      toBackItem.classList.add('disabled')
+      toBackItem.setAttribute('style', 'cursor: not-allowed')
     })
   </script>
 </body>

@@ -546,6 +546,11 @@
           graph.get('canvas').get('el').style.cursor = 'crosshair'
           break
         }
+        case 'group': {
+          const nodes = graph.findAllByState('node', 'selected')
+          group(nodes)
+          break
+        }
         default:
       }
     })
@@ -1407,6 +1412,76 @@
         ]
       },
     }, 'single-node')
+
+    const collapseIcon = (x, y, r) => {
+      return [
+        ['M', x - r, y],
+        ['a', r, r, 0, 1, 0, r * 2, 0],
+        ['a', r, r, 0, 1, 0, -r * 2, 0],
+        ['M', x - r + 4, y],
+        ['L', x - r + 2 * r - 4, y]
+      ]
+    }
+
+    const expandIcon = (x, y, r) => {
+      return [
+        ['M', x - r, y],
+        ['a', r, r, 0, 1, 0, r * 2, 0],
+        ['a', r, r, 0, 1, 0, -r * 2, 0],
+        ['M', x - r + 4, y],
+        ['L', x - r + 2 * r - 4, y],
+        ['M', x - r + r, y - r + 4],
+        ['L', x, y + r - 4]
+      ]
+    }
+    G6.registerCombo('group', {
+      drawShape(cfg, group) {
+        const self = this
+        cfg.padding = cfg.padding || [50, 30, 20, 20]
+        const style = self.getShapeStyle(cfg)
+        const rect = group.addShape('rect', {
+          attrs: {
+            ...style,
+            x: -style.width / 2 - (cfg.padding[3] - cfg.padding[1]) / 2,
+            y: -style.height / 2 - (cfg.padding[0] - cfg.padding[2]) / 2,
+            width: style.width,
+            height: style.height,
+            radius: 5
+          },
+          draggable: true,
+          name: 'combo-keyShape'
+        })
+        group.addShape('marker', {
+          attrs: {
+            ...style,
+            fill: '#fff',
+            opacity: 1,
+            // cfg.style.width and cfg.style.heigth correspond to the innerWidth and innerHeight in the figure of Illustration of Built-in Rect Combo
+            x: cfg.style.width / 2 + cfg.padding[1],
+            y: (cfg.padding[2] - cfg.padding[0]) / 2,
+            r: 10,
+            symbol: collapseIcon,
+          },
+          draggable: true,
+          name: 'combo-marker-shape',
+        })
+        return rect
+      },
+      // 定义新增的右侧圆的位置更新逻辑
+      afterUpdate(cfg, combo) {
+        const group = combo.get('group');
+        // 在该 Combo 的图形分组根据 name 找到右侧圆图形
+        const marker = group.find(item => {
+          return item.get('name') === 'combo-marker-shape'
+        });
+        marker.attr({
+          x: cfg.style.width / 2 + cfg.padding[1],
+          y: (cfg.padding[2] - cfg.padding[0]) / 2,
+          symbol: cfg.collapsed ? expandIcon : collapseIcon,
+        })
+      },
+    }, 'rect')
+
     G6.registerBehavior('clickSelected', {
       getEvents() {
         return {
@@ -1425,6 +1500,7 @@
             graph.clearItemStates(node, 'selected')
             graph.setItemState(node, 'show-anchor', false)
           })
+          graph.emit('unselect', selectedNodes)
         }
         let nodes = []
         if (!item.hasState('selected')) {
@@ -2705,6 +2781,20 @@
         menuContainer.setAttribute('style', `display:none`)
       }
     })
+    G6.registerBehavior('groupCollapseExpand', {
+      getEvents() {
+        return {
+          'combo:click': 'onComboCollapseExpandClick'
+        }
+      },
+      onComboCollapseExpandClick(e) {
+        if (e.target.get('name') === 'combo-marker-shape') {
+          // Collapse or expand the combo
+          graph.collapseExpandCombo(e.item)
+        }
+        graph.refreshPositions()
+      }
+    })
     /**
     * undo 操作
     */
@@ -3131,6 +3221,23 @@
         Array.isArray(value) :
         isType(value, 'Array')
     }
+
+    function group(nodes) {
+      if (nodes.length > 1) {
+        const timestamp = new Date().getTime()
+        const id = `group-${timestamp}`
+        const nodesIds = nodes.map(node => {
+          return node.get('id')
+        })
+        const model = {
+          id,
+          type: 'group',
+          label: 'New Group',
+        }
+        graph.createCombo(model, nodesIds)
+      }
+    }
+
     function clone(obj) {
       if (typeof obj !== 'object' || obj === null) {
         return obj
@@ -3162,6 +3269,7 @@
       container: canvas,
       width: container.clientWidth - 480,
       height: container.clientHeight,
+      // groupByTypes: false,
       modes: {
         default: [
           {
@@ -3191,7 +3299,8 @@
           'dragPoint',
           'hoverEdgeActived',
           'deleteItem',
-          'contextMenu'
+          'contextMenu',
+          'groupCollapseExpand'
         ]
       },
       plugins: [minimap],
@@ -3257,6 +3366,13 @@
       const toBackItem = document.querySelector('.toolbar li[data-command="to-back"]')
       toBackItem.classList.remove('disabled')
       toBackItem.removeAttribute('style')
+
+      const groupItem = document.querySelector('.toolbar li[data-command="group"]')
+      const nodes = graph.findAllByState('node', 'selected')
+      if (nodes.length > 1) {
+        groupItem.classList.remove('disabled')
+        groupItem.removeAttribute('style')
+      }
     })
     graph.on('unselect', e => {
       const deleteItem = document.querySelector('.toolbar li[data-command="delete"]')
@@ -3274,6 +3390,15 @@
       const toBackItem = document.querySelector('.toolbar li[data-command="to-back"]')
       toBackItem.classList.add('disabled')
       toBackItem.setAttribute('style', 'cursor: not-allowed')
+
+      const nodes = graph.findAllByState('node', 'selected')
+
+      if (nodes.length < 2) {
+        const groupItem = document.querySelector('.toolbar li[data-command="group"]')
+        groupItem.classList.add('disabled')
+        groupItem.setAttribute('style', 'cursor: not-allowed')
+      }
+
     })
   </script>
 </body>

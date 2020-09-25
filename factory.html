@@ -128,7 +128,7 @@
       justify-content: center;
       color: #876800;
       transform-origin: center;
-      animation: zoom 1s ease-in;
+      animation: zoom 1s ease-in-out;
     }
 
     .good .icon {
@@ -364,7 +364,7 @@
             }
           }
           this.goodTimer = setTimeout(() => {
-            this.goodStyle += 'scale(0.5)'
+            this.goodStyle += 'scale(0.5);'
           }, 0)
         }
       }
